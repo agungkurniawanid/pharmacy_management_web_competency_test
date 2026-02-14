@@ -7,7 +7,7 @@ use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PenjualanController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupplierController;
-use Illuminate\Auth\Middleware\Authenticate; 
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -20,7 +20,7 @@ Route::get('/', function () {
 });
 
 Route::middleware([RedirectIfAuthenticated::class])->group(function () {
-    Route::get('/login', [RoleController::class, 'loginView'])->name('login'); 
+    Route::get('/login', [RoleController::class, 'loginView'])->name('login');
     Route::post('/login', [RoleController::class, 'loginFunction'])->name('login.post');
 });
 
@@ -31,13 +31,13 @@ Route::post("/logout", [RoleController::class, 'logout'])
 
 Route::prefix('dashboard')
     ->name('dashboard.')
-    ->middleware([Authenticate::class]) 
+    ->middleware([Authenticate::class])
     ->group(function () {
 
         Route::get('/', [DashboardController::class, 'index'])
             ->name('index');
 
-        
+
         Route::prefix('obat')
             ->name('obat.')
             ->group(function () {
@@ -45,15 +45,19 @@ Route::prefix('dashboard')
                     ->name('index');
                 Route::delete('/{kode_obat}', [ObatController::class, 'destroy'])
                     ->name('destroy');
-                    Route::post('/', [ObatController::class, 'store'])
+                Route::post('/', [ObatController::class, 'store'])
                     ->name('store');
+                Route::put('/{kode_obat}', [ObatController::class, 'update'])
+                    ->name('update');
             });
 
         Route::prefix('pembelian')
             ->name('pembelian.')
             ->group(function () {
-                Route::get('/', [PembelianController::class, 'index'])
-                    ->name('index');
+                Route::get('/', [PembelianController::class, 'index'])->name('index');
+                Route::post('/', [PembelianController::class, 'store'])->name('store');
+                Route::put('/{nota}', [PembelianController::class, 'update'])->name('update');
+                Route::delete('/{nota}', [PembelianController::class, 'destroy'])->name('destroy');
             });
 
         Route::prefix('penjualan')

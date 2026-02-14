@@ -24,4 +24,8 @@ class Supplier extends Model
     {
         return $this->hasMany(Obat::class, 'kode_supplier', 'kode_supplier');
     }
+
+    public function pembelians() {
+        return $this->hasMany(Pembelian::class, 'kode_supplier', 'kode_supplier');
+    }
 }

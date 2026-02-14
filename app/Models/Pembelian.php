@@ -18,4 +18,15 @@ class Pembelian extends Model
         'kode_supplier',
         'diskon',
     ];
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'kode_supplier', 'kode_supplier');
+    }
+
+    public function pembelianDetails()
+    {
+        return $this->hasMany(PembelianDetail::class, 'nota', 'nota');
+    }
 }
+

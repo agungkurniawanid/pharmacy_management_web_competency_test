@@ -27,4 +27,14 @@ class Obat extends Model
     {
         return $this->belongsTo(Supplier::class, 'kode_supplier', 'kode_supplier');
     }
+
+    public function pembelianDetails()
+{
+    return $this->hasMany(
+        PembelianDetail::class,
+        'kode_obat',
+        'kode_obat'
+    );
+}
+
 }

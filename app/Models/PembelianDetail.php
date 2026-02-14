@@ -16,4 +16,9 @@ class PembelianDetail extends Model
         'kode_obat',
         'jumlah',
     ];
+    
+    public function obat()
+    {
+        return $this->belongsTo(Obat::class, 'kode_obat', 'kode_obat');
+    }
 }

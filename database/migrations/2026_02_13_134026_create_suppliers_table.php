@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('kode_supplier', 20)->primary();
             $table->string('nama_supplier',100)->nullable(false);
             $table->text('alamat')->nullable();
-            $table->string('kota',20)->nullable();
+            $table->string('kota')->nullable();
             $table->string('telpon',13)->nullable();
             $table->timestamps();
         });

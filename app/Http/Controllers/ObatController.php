@@ -17,7 +17,6 @@ class ObatController extends Controller
     {
         $query = Obat::with('supplier');
 
-        // 1. Fitur Pencarian (Search)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -27,12 +26,12 @@ class ObatController extends Controller
             });
         }
 
-        // 2. Filter Berdasarkan Jenis
+        
         if ($request->filled('jenis')) {
             $query->where('jenis', $request->jenis);
         }
 
-        // 3. Filter Berdasarkan Supplier (Baru)
+        
         if ($request->filled('supplier')) {
             $query->where('kode_supplier', $request->supplier);
         }
@@ -41,7 +40,7 @@ class ObatController extends Controller
             $query->where('stok', '<=', 10);
         }
 
-        // 4. Fitur Sorting (Terbaru, Terlama, dll)
+        
         switch ($request->get('sort', 'newest')) {
             case 'oldest':
                 $query->oldest('created_at');
@@ -58,23 +57,17 @@ class ObatController extends Controller
             case 'stock_high':
                 $query->orderBy('stok', 'desc');
                 break;
-            default: // newest
+            default: 
                 $query->latest('created_at');
                 break;
         }
 
-        // 5. Pagination (Tetap menggunakan variabel request agar tidak hilang saat pindah halaman)
+        
         $obats = $query->paginate(10)->withQueryString();
-
-        // 6. Data untuk Stats Cards & Dropdown Filter
         $lowStockCount = Obat::where('stok', '<=', 10)->count();
         $totalStockValue = Obat::sum(DB::raw('stok * harga_jual'));
         $jenisCount = Obat::distinct('jenis')->count('jenis');
-        
-        // Ambil data supplier untuk dikirim ke Dropdown Filter
         $suppliers = Supplier::orderBy('nama_supplier', 'asc')->get();
-        
-        // Ambil distinct jenis obat dari database (tidak hardcoded)
         $jenisObats = Obat::distinct('jenis')->orderBy('jenis', 'asc')->pluck('jenis');
 
         return view('pages.obat.index', compact(
@@ -96,8 +89,8 @@ class ObatController extends Controller
      */
    public function store(Request $request)
     {
-        // --- PERBAIKAN: Bersihkan format Rupiah sebelum divalidasi ---
-        // Menghilangkan titik dari input harga_beli dan harga_jual
+        
+        
         $request->merge([
             'harga_beli' => str_replace('.', '', $request->harga_beli),
             'harga_jual' => str_replace('.', '', $request->harga_jual),
@@ -107,25 +100,25 @@ class ObatController extends Controller
             'nama_obat'     => 'required|string|max:50',
             'jenis'         => 'required|string|max:50',
             'satuan'        => 'required|string|max:50',
-            'harga_beli'    => 'required|integer|min:0', // Sekarang pasti lolos karena titik sudah hilang
-            'harga_jual'    => 'required|integer|min:0', // Sekarang pasti lolos
+            'harga_beli'    => 'required|integer|min:0', 
+            'harga_jual'    => 'required|integer|min:0', 
             'stok'          => 'required|integer|min:0',
             'kode_supplier' => 'required|string|exists:suppliers,kode_supplier',
         ], [
             'kode_supplier.exists' => 'Supplier yang dipilih tidak valid.'
         ]);
 
-        // Auto-generate kode_obat secara sequence
+        
         $lastObat = Obat::latest('created_at')->first();
         if ($lastObat) {
-            // Karena panjang awal kode 'OBT-' adalah 4 karakter, kita ambil string mulai dari indeks ke-4
+            
             $lastNumber = (int) substr($lastObat->kode_obat, 4); 
             $nextNumber = $lastNumber + 1;
         } else {
             $nextNumber = 1;
         }
         
-        // Membentuk format: OBT-0000000000000001 (Total 20 karakter)
+        
         $validated['kode_obat'] = 'OBT-' . str_pad($nextNumber, 16, '0', STR_PAD_LEFT);
 
         Obat::create($validated);
@@ -160,19 +153,30 @@ class ObatController extends Controller
     {
         $obat = Obat::findOrFail($kode_obat);
 
-        $validated = $request->validate([
-            'nama_obat' => 'required|string|max:50',
-            'jenis' => 'required|string|max:50',
-            'satuan' => 'required|string',
-            'harga_beli' => 'required|integer|min:0',
-            'harga_jual' => 'required|integer|min:0',
-            'stok' => 'required|integer|min:0',
-            'kode_supplier' => 'required|string|exists:suppliers,kode_supplier',
+        
+        $request->merge([
+            'harga_beli' => str_replace('.', '', $request->harga_beli),
+            'harga_jual' => str_replace('.', '', $request->harga_jual),
         ]);
 
+        
+        $validated = $request->validate([
+            'nama_obat'     => 'required|string|max:50',
+            'jenis'         => 'required|string|max:50',
+            'satuan'        => 'required|string|max:50',
+            'harga_beli'    => 'required|integer|min:0',
+            'harga_jual'    => 'required|integer|min:0',
+            'stok'          => 'required|integer|min:0',
+            'kode_supplier' => 'required|string|exists:suppliers,kode_supplier',
+        ], [
+            'kode_supplier.exists' => 'Supplier yang dipilih tidak valid.'
+        ]);
+
+        
         $obat->update($validated);
 
-        return redirect()->route('obat.index')->with('success', 'Data obat berhasil diperbarui!');
+        return redirect()->route('dashboard.obat.index')
+                         ->with('success', 'Data obat ' . $request->nama_obat . ' berhasil diperbarui!');
     }
 
     /**

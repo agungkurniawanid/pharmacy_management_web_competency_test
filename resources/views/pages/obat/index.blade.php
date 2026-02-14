@@ -1,7 +1,32 @@
 @extends('layouts.main-layout')
 
 @section('content')
-    <div x-data="{ showAddSheet: {{ $errors->any() ? 'true' : 'false' }} }" class="flex flex-col gap-6 pb-12 relative">
+    <div x-data="{
+        showAddSheet: {{ old('_method') !== 'PUT' && $errors->any() ? 'true' : 'false' }},
+        showEditSheet: {{ old('_method') === 'PUT' && $errors->any() ? 'true' : 'false' }},
+        editFormAction: '{{ old('_method') === 'PUT' && old('kode_obat_edit') ? route('dashboard.obat.update', old('kode_obat_edit')) : '' }}',
+        editData: {
+            kode_obat: '{{ old('kode_obat_edit') }}',
+            nama_obat: '{{ old('nama_obat') }}',
+            jenis: '{{ old('jenis') }}',
+            satuan: '{{ old('satuan') }}',
+            harga_beli: '{{ old('harga_beli') }}',
+            harga_jual: '{{ old('harga_jual') }}',
+            stok: '{{ old('stok') }}',
+            kode_supplier: '{{ old('kode_supplier') }}'
+        }
+    }"
+        @open-edit.window="
+        editData = $event.detail.obat;
+        editFormAction = $event.detail.actionUrl;
+        showEditSheet = true;
+        // Format otomatis angka rupiah saat data dipanggil ke form edit
+        setTimeout(() => {
+            document.getElementById('edit_harga_beli').value = formatCurrencyInput(String(editData.harga_beli));
+            document.getElementById('edit_harga_jual').value = formatCurrencyInput(String(editData.harga_jual));
+        }, 10);
+    "
+        class="flex flex-col gap-6 pb-12 relative">
         <div class="flex flex-col gap-6 pb-12">
 
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -118,10 +143,11 @@
             <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden">
 
                 <div class="p-5 border-b border-slate-700 bg-slate-800/50">
-                    {{-- Tambahkan x-data dan x-ref="filterForm" di form ini --}}
+                    {{-- Pastikan x-data dan x-ref="filterForm" terpasang di tag form --}}
                     <form method="GET" action="{{ route('dashboard.obat.index') }}"
                         class="flex flex-col lg:flex-row gap-3" x-data x-ref="filterForm">
 
+                        {{-- Search Kolom --}}
                         <div class="flex-1 relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="size-5 text-slate-500" fill="none"
@@ -136,16 +162,20 @@
                                 class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
                         </div>
 
+                        {{-- Dropdown Filters --}}
                         <div class="flex flex-col sm:flex-row gap-3">
 
+                            {{-- Dropdown Jenis --}}
                             <select name="jenis" @change="$refs.filterForm.submit()"
                                 class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
                                 <option value="">Semua Jenis</option>
-                                @foreach($jenisObats as $jenis)
-                                    <option value="{{ $jenis }}" {{ request('jenis') == $jenis ? 'selected' : '' }}>{{ $jenis }}</option>
+                                @foreach ($jenisObats as $jenis)
+                                    <option value="{{ $jenis }}"
+                                        {{ request('jenis') == $jenis ? 'selected' : '' }}>{{ $jenis }}</option>
                                 @endforeach
                             </select>
 
+                            {{-- Dropdown Supplier --}}
                             <select name="supplier" @change="$refs.filterForm.submit()"
                                 class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
                                 <option value="">Semua Supplier</option>
@@ -157,6 +187,7 @@
                                 @endforeach
                             </select>
 
+                            {{-- Dropdown Sorting --}}
                             <select name="sort" @change="$refs.filterForm.submit()"
                                 class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
                                 <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Terbaru
@@ -173,12 +204,15 @@
                                     Tertinggi</option>
                             </select>
 
-                            <a href="{{ route('dashboard.obat.index') }}"
-                                class="px-4 py-2 bg-slate-800 border border-slate-600 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors flex items-center justify-center">
-                                Reset
-                            </a>
+                            {{-- Tombol Reset --}}
+                            @if (request('search') || request('jenis') || request('supplier') || request('sort'))
+                                <a href="{{ route('dashboard.obat.index') }}"
+                                    class="px-4 py-2 bg-slate-800 border border-slate-600 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors flex items-center justify-center">
+                                    Reset
+                                </a>
+                            @endif
 
-
+                            {{-- Fallback untuk browser tanpa Javascript --}}
                             <noscript>
                                 <button type="submit"
                                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center">Filter</button>
@@ -261,15 +295,28 @@
                                                 </svg>
                                             </a>
 
-                                            <a href=""
-                                                class="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-700 rounded transition-colors"
+                                            <button type="button"
+                                                @click="$dispatch('open-edit', {
+        obat: {
+            kode_obat: '{{ $obat->kode_obat }}',
+            nama_obat: '{{ addslashes($obat->nama_obat) }}',
+            jenis: '{{ $obat->jenis }}',
+            satuan: '{{ $obat->satuan }}',
+            harga_beli: '{{ $obat->harga_beli }}',
+            harga_jual: '{{ $obat->harga_jual }}',
+            stok: '{{ $obat->stok }}',
+            kode_supplier: '{{ $obat->kode_supplier }}'
+        },
+        actionUrl: '{{ route('dashboard.obat.update', $obat->kode_obat) }}'
+    })"
+                                                class="p-1.5 cursor-pointer text-slate-400 hover:text-amber-400 hover:bg-slate-700 rounded transition-colors"
                                                 title="Edit">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none"
                                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
-                                            </a>
+                                            </button>
 
                                             <button type="button"
                                                 @click="window.dispatchEvent(new CustomEvent('open-confirm', {
@@ -387,139 +434,312 @@
             </div>
         </div>
 
-        <div x-show="showAddSheet" style="display: none;"
-         x-transition:enter="transition ease-out duration-300 transform"
-         x-transition:enter-start="translate-y-full"
-         x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition ease-in duration-300 transform"
-         x-transition:leave-start="translate-y-0"
-         x-transition:leave-end="translate-y-full"
-         class="fixed inset-x-0 bottom-0 z-[70] w-full max-w-4xl mx-auto flex flex-col max-h-[90vh] bg-slate-800 border-t border-x border-slate-700 rounded-t-3xl shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.7)]">
-        
-        <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer" @click="showAddSheet = false">
-            <div class="w-16 h-1.5 bg-slate-600 rounded-full hover:bg-slate-500 transition-colors"></div>
-        </div>
+        <div x-show="showAddSheet" style="display: none;" x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+            x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0"
+            x-transition:leave-end="translate-y-full"
+            class="fixed inset-x-0 bottom-0 z-[70] w-full max-w-4xl mx-auto flex flex-col max-h-[90vh] bg-slate-800 border-t border-x border-slate-700 rounded-t-3xl shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.7)]">
 
-        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <span class="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg">
-                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                </span>
-                Form Tambah Obat
-            </h2>
-            <button type="button" @click="showAddSheet = false" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors">
-                <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-        </div>
+            <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer" @click="showAddSheet = false">
+                <div class="w-16 h-1.5 bg-slate-600 rounded-full hover:bg-slate-500 transition-colors"></div>
+            </div>
 
-        <div class="p-6 overflow-y-auto custom-scrollbar">
-            <form id="formTambahObat" action="{{ route('dashboard.obat.store') }}" method="POST" class="space-y-6" @submit="
+            <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
+                <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                    <span class="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg">
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </span>
+                    Form Tambah Obat
+                </h2>
+                <button type="button" @click="showAddSheet = false"
+                    class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors">
+                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="formTambahObat" action="{{ route('dashboard.obat.store') }}" method="POST" class="space-y-6"
+                    @submit="
                 const hargaBeli = document.querySelector('input[name=\"harga_beli\"]');
                 const hargaJual = document.querySelector('input[name=\"harga_jual\"]');
                 hargaBeli.value = hargaBeli.value.replace(/\./g, '');
                 hargaJual.value = hargaJual.value.replace(/\./g, '');
             ">
-                @csrf
-                <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                    <p class="text-sm text-blue-300 flex items-center gap-2">
-                        <svg class="size-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <span><strong>Kode Obat</strong> akan otomatis di-generate secara berurutan saat data disimpan</span>
-                    </p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Nama Obat <span class="text-red-400">*</span></label>
-                        <input type="text" name="nama_obat" value="{{ old('nama_obat') }}" required maxlength="50" placeholder="Contoh: Paracetamol 500mg"
-                            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
-                        @error('nama_obat') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                    @csrf
+                    <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <p class="text-sm text-blue-300 flex items-center gap-2">
+                            <svg class="size-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span><strong>Kode Obat</strong> akan otomatis di-generate secara berurutan saat data
+                                disimpan</span>
+                        </p>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Jenis <span class="text-red-400">*</span></label>
-                        <select name="jenis" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
-                            <option value="" disabled {{ old('jenis') ? '' : 'selected' }}>Pilih Jenis Obat</option>
-                            @foreach($jenisObats as $jenis)
-                                <option value="{{ $jenis }}" {{ old('jenis') == $jenis ? 'selected' : '' }}>{{ $jenis }}</option>
-                            @endforeach
-                        </select>
-                        @error('jenis') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Nama Obat <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" name="nama_obat" value="{{ old('nama_obat') }}" required
+                                maxlength="50" placeholder="Contoh: Paracetamol 500mg"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+                            @error('nama_obat')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Satuan <span class="text-red-400">*</span></label>
-                        <select name="satuan" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
-                            <option value="" disabled {{ old('satuan') ? '' : 'selected' }}>Pilih Satuan Obat</option>
-                            @foreach(['Strip', 'Botol', 'Pcs', 'Tube', 'Ampul', 'Box'] as $satuan)
-                                <option value="{{ $satuan }}" {{ old('satuan') == $satuan ? 'selected' : '' }}>{{ $satuan }}</option>
-                            @endforeach
-                        </select>
-                        @error('satuan') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Harga Beli (Rp) <span class="text-red-400">*</span></label>
-                        <input type="text" 
-                               name="harga_beli" 
-                               value="{{ old('harga_beli') }}" 
-                               required 
-                               inputmode="numeric"
-                               placeholder="0"
-                               x-data="{ formatCurrency(value) { return value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } }"
-                               @input="$el.value = formatCurrency($el.value); $el.dataset.rawValue = $el.value.replace(/\./g, '');"
-                               @blur="$el.value = formatCurrency($el.value);"
-                               class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
-                        @error('harga_beli') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Harga Jual (Rp) <span class="text-red-400">*</span></label>
-                        <input type="text" 
-                               name="harga_jual" 
-                               value="{{ old('harga_jual') }}" 
-                               required 
-                               inputmode="numeric"
-                               placeholder="0"
-                               x-data="{ formatCurrency(value) { return value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } }"
-                               @input="$el.value = formatCurrency($el.value); $el.dataset.rawValue = $el.value.replace(/\./g, '');"
-                               @blur="$el.value = formatCurrency($el.value);"
-                               class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors">
-                        @error('harga_jual') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Stok Awal <span class="text-red-400">*</span></label>
-                        <input type="text" inputmode="numeric" name="stok" value="{{ old('stok', 0) }}" required min="0"
-                            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
-                        @error('stok') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-300 mb-2">Supplier <span class="text-red-400">*</span></label>
-                        <select name="kode_supplier" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
-                            <option value="" disabled {{ old('kode_supplier') ? '' : 'selected' }}>Pilih Asal Supplier</option>
-                            @foreach($suppliers as $supplier)
-                                <option value="{{ $supplier->kode_supplier }}" {{ old('kode_supplier') == $supplier->kode_supplier ? 'selected' : '' }}>
-                                    {{ $supplier->kode_supplier }} - {{ $supplier->nama_supplier }}
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Jenis <span
+                                    class="text-red-400">*</span></label>
+                            <select name="jenis" required
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
+                                <option value="" disabled {{ old('jenis') ? '' : 'selected' }}>Pilih Jenis Obat
                                 </option>
-                            @endforeach
-                        </select>
-                        @error('kode_supplier') <p class="text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                                @foreach ($jenisObats as $jenis)
+                                    <option value="{{ $jenis }}" {{ old('jenis') == $jenis ? 'selected' : '' }}>
+                                        {{ $jenis }}</option>
+                                @endforeach
+                            </select>
+                            @error('jenis')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Satuan <span
+                                    class="text-red-400">*</span></label>
+                            <select name="satuan" required
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
+                                <option value="" disabled {{ old('satuan') ? '' : 'selected' }}>Pilih Satuan Obat
+                                </option>
+                                @foreach (['Strip', 'Botol', 'Pcs', 'Tube', 'Ampul', 'Box'] as $satuan)
+                                    <option value="{{ $satuan }}" {{ old('satuan') == $satuan ? 'selected' : '' }}>
+                                        {{ $satuan }}</option>
+                                @endforeach
+                            </select>
+                            @error('satuan')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Harga Beli (Rp) <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" name="harga_beli" value="{{ old('harga_beli') }}" required
+                                inputmode="numeric" placeholder="0" x-data="{ formatCurrency(value) { return value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } }"
+                                @input="$el.value = formatCurrency($el.value); $el.dataset.rawValue = $el.value.replace(/\./g, '');"
+                                @blur="$el.value = formatCurrency($el.value);"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+                            @error('harga_beli')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Harga Jual (Rp) <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" name="harga_jual" value="{{ old('harga_jual') }}" required
+                                inputmode="numeric" placeholder="0" x-data="{ formatCurrency(value) { return value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } }"
+                                @input="$el.value = formatCurrency($el.value); $el.dataset.rawValue = $el.value.replace(/\./g, '');"
+                                @blur="$el.value = formatCurrency($el.value);"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors">
+                            @error('harga_jual')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Stok Awal <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" inputmode="numeric" name="stok" value="{{ old('stok', 0) }}"
+                                required min="0"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors">
+                            @error('stok')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Supplier <span
+                                    class="text-red-400">*</span></label>
+                            <select name="kode_supplier" required
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
+                                <option value="" disabled {{ old('kode_supplier') ? '' : 'selected' }}>Pilih Asal
+                                    Supplier</option>
+                                @foreach ($suppliers as $supplier)
+                                    <option value="{{ $supplier->kode_supplier }}"
+                                        {{ old('kode_supplier') == $supplier->kode_supplier ? 'selected' : '' }}>
+                                        {{ $supplier->kode_supplier }} - {{ $supplier->nama_supplier }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('kode_supplier')
+                                <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
+
+            <div
+                class="px-6 py-4 cursor-pointer border-t border-slate-700 bg-slate-800 flex justify-end gap-3 shrink-0 rounded-b-3xl">
+                <button type="button" @click="showAddSheet = false"
+                    class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+                    Batal
+                </button>
+                <button type="submit" form="formTambahObat"
+                    class="px-5 py-2.5 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Simpan Obat
+                </button>
+            </div>
+
         </div>
 
-        <div class="px-6 py-4 cursor-pointer border-t border-slate-700 bg-slate-800 flex justify-end gap-3 shrink-0 rounded-b-3xl">
-            <button type="button" @click="showAddSheet = false" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
-                Batal
-            </button>
-            <button type="submit" form="formTambahObat" class="px-5 py-2.5 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
-                <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                Simpan Obat
-            </button>
+        <div x-show="showEditSheet" style="display: none;"
+            x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full"
+            x-transition:enter-end="translate-y-0" x-transition:leave="transition ease-in duration-300 transform"
+            x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+            class="fixed inset-x-0 bottom-0 z-[75] w-full max-w-4xl mx-auto flex flex-col max-h-[90vh] bg-slate-800 border-t border-x border-slate-700 rounded-t-3xl shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.7)]">
+
+            <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer" @click="showEditSheet = false">
+                <div class="w-16 h-1.5 bg-slate-600 rounded-full hover:bg-slate-500 transition-colors"></div>
+            </div>
+
+            <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
+                <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                    <span class="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg">
+                        <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                    </span>
+                    Form Edit Obat
+                </h2>
+                <button type="button" @click="showEditSheet = false"
+                    class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors">
+                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="formEditObat" :action="editFormAction" method="POST" class="space-y-6">
+                    @csrf
+                    @method('PUT')
+
+                    <input type="hidden" name="kode_obat_edit" x-model="editData.kode_obat">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Kode Obat</label>
+                            <input type="text" x-model="editData.kode_obat" readonly disabled
+                                class="w-full px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed focus:outline-none transition-colors">
+                            <p class="text-xs text-slate-500 mt-1">Kode obat (Primary Key) tidak dapat diubah.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Nama Obat <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" name="nama_obat" x-model="editData.nama_obat" required maxlength="50"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
+                            {{ old('_method') === 'PUT' ? $errors->first('nama_obat', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Jenis <span
+                                    class="text-red-400">*</span></label>
+                            <select name="jenis" x-model="editData.jenis" required
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors cursor-pointer">
+                                <option value="" disabled>Pilih Jenis Obat</option>
+                                @foreach (['Tablet', 'Kapsul', 'Sirup', 'Injeksi', 'Salep'] as $jenis)
+                                    <option value="{{ $jenis }}">{{ $jenis }}</option>
+                                @endforeach
+                            </select>
+                            {{ old('_method') === 'PUT' ? $errors->first('jenis', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Satuan <span
+                                    class="text-red-400">*</span></label>
+                            <select name="satuan" x-model="editData.satuan" required
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors cursor-pointer">
+                                <option value="" disabled>Pilih Satuan Obat</option>
+                                @foreach (['Strip', 'Botol', 'Pcs', 'Tube', 'Ampul', 'Box'] as $satuan)
+                                    <option value="{{ $satuan }}">{{ $satuan }}</option>
+                                @endforeach
+                            </select>
+                            {{ old('_method') === 'PUT' ? $errors->first('satuan', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Harga Beli (Rp) <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" id="edit_harga_beli" name="harga_beli" required inputmode="numeric"
+                                placeholder="0" oninput="this.value = formatCurrencyInput(this.value)"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
+                            {{ old('_method') === 'PUT' ? $errors->first('harga_beli', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Harga Jual (Rp) <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" id="edit_harga_jual" name="harga_jual" required inputmode="numeric"
+                                placeholder="0" oninput="this.value = formatCurrencyInput(this.value)"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors">
+                            {{ old('_method') === 'PUT' ? $errors->first('harga_jual', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Stok Tersedia <span
+                                    class="text-red-400">*</span></label>
+                            <input type="text" inputmode="numeric" name="stok" x-model="editData.stok" required
+                                min="0"
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors">
+                            {{ old('_method') === 'PUT' ? $errors->first('stok', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-300 mb-2">Supplier <span
+                                    class="text-red-400">*</span></label>
+                            <select name="kode_supplier" x-model="editData.kode_supplier" required
+                                class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors cursor-pointer">
+                                <option value="" disabled>Pilih Asal Supplier</option>
+                                @foreach ($suppliers as $supplier)
+                                    <option value="{{ $supplier->kode_supplier }}">
+                                        {{ $supplier->kode_supplier }} - {{ $supplier->nama_supplier }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            {{ old('_method') === 'PUT' ? $errors->first('kode_supplier', '<p class="text-red-400 text-xs mt-1">:message</p>') : '' }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div
+                class="px-6 py-4 border-t cursor-pointer border-slate-700 bg-slate-800 flex justify-end gap-3 shrink-0 rounded-b-3xl">
+                <button type="button" @click="showEditSheet = false"
+                    class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+                    Batal
+                </button>
+                <button type="submit" form="formEditObat"
+                    class="px-5 py-2.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-lg font-bold transition-colors flex items-center gap-2">
+                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Update Data Obat
+                </button>
+            </div>
         </div>
-    </div>
     </div>
 
     <script>
@@ -531,13 +751,26 @@
         document.addEventListener('DOMContentLoaded', function() {
             const hargaBeli = document.querySelector('input[name="harga_beli"]');
             const hargaJual = document.querySelector('input[name="harga_jual"]');
-            
+
             if (hargaBeli && hargaBeli.value) {
                 hargaBeli.value = formatCurrency(hargaBeli.value);
             }
             if (hargaJual && hargaJual.value) {
                 hargaJual.value = formatCurrency(hargaJual.value);
             }
+        });
+
+        function formatCurrencyInput(value) {
+            let numericValue = String(value).replace(/\D/g, '');
+            return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // (Kode lama mu untuk set value form Tambah)
+            const hargaBeli = document.querySelector('input[name="harga_beli"]');
+            const hargaJual = document.querySelector('input[name="harga_jual"]');
+            if (hargaBeli && hargaBeli.value) hargaBeli.value = formatCurrencyInput(hargaBeli.value);
+            if (hargaJual && hargaJual.value) hargaJual.value = formatCurrencyInput(hargaJual.value);
         });
     </script>
 @endsection
