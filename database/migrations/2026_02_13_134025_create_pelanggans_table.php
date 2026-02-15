@@ -12,13 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pelanggans', function (Blueprint $table) {
-            $table->string('kode_pelanggan', 20)->primary();
-            $table->string('nama_pelanggan', 50)->nullable(false);
-            $table->text('alamat', 100)->nullable();
-            $table->string('kota',50)->nullable();
-            $table->string('telpon',13)->nullable();
-            $table->timestamps();
-        });
+    $table->string('kode_pelanggan', 20)->primary();
+    
+    // Tambahan Relasi ke Users
+    $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+    
+    $table->string('nama_pelanggan', 50)->nullable(false);
+    $table->text('alamat')->nullable();
+    $table->string('kota', 50)->nullable();
+    $table->string('telpon', 13)->nullable();
+    $table->timestamps();
+});
     }
 
     /**

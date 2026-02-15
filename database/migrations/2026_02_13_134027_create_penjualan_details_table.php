@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('nota', 20)->nullable(false);
             $table->string('kode_obat', 20)->nullable(false);
             $table->integer('jumlah')->nullable(false);
+                        $table->integer('harga_jual')->nullable(false);
+            $table->integer('subtotal')->nullable(false);
             $table->timestamps();
 
             $table->foreign('nota')

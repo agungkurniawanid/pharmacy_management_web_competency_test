@@ -54,4 +54,10 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class);
     }
+
+    // TAMBAHAN: Relasi One-to-One ke Pelanggan
+    public function pelanggan()
+    {
+        return $this->hasOne(Pelanggan::class, 'user_id', 'id');
+    }
 }

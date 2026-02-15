@@ -63,8 +63,10 @@ Route::prefix('dashboard')
         Route::prefix('penjualan')
             ->name('penjualan.')
             ->group(function () {
-                Route::get('/', [PenjualanController::class, 'index'])
-                    ->name('index');
+                Route::get('/', [PenjualanController::class, 'index'])->name('index');
+                Route::post('/', [PenjualanController::class, 'store'])->name('store');
+                Route::put('/{nota}', [PenjualanController::class, 'update'])->name('update');
+                Route::delete('/{nota}', [PenjualanController::class, 'destroy'])->name('destroy');
             });
 
         Route::prefix('pelanggan')
@@ -72,6 +74,9 @@ Route::prefix('dashboard')
             ->group(function () {
                 Route::get('/', [PelangganController::class, 'index'])
                     ->name('index');
+                Route::post('/', [PelangganController::class, 'store'])->name('store');
+                Route::put('/{pelanggan}', [PelangganController::class, 'update'])->name('update');
+                Route::delete('/{pelanggan}', [PelangganController::class, 'destroy'])->name('destroy');
             });
 
         Route::prefix('supplier')
@@ -79,6 +84,12 @@ Route::prefix('dashboard')
             ->group(function () {
                 Route::get('/', [SupplierController::class, 'index'])
                     ->name('index');
+                Route::post('/', [SupplierController::class, 'store'])
+                    ->name('store');
+                Route::put('/{kode_supplier}', [SupplierController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{kode_supplier}', [SupplierController::class, 'destroy'])
+                    ->name('destroy');
             });
 
         Route::prefix('access')

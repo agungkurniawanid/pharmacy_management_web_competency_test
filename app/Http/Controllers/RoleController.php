@@ -24,44 +24,47 @@ class RoleController extends Controller
      * Handle login functionality
      */
     public function loginFunction(Request $request)
-    {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|min:6',
-        ]);
+{
+    $validated = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required|min:6',
+    ]);
 
-        $user = User::where('email', $validated['email'])->first();
+    // Load relasi 'role' dan 'pelanggan' sekaligus untuk menghemat query
+    $user = User::with(['role', 'pelanggan'])->where('email', $validated['email'])->first();
 
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
-            return redirect()->route('login')
-                ->with('error', 'Email atau password salah!');
-        }
-
-        // Authenticate user
-        Auth::login($user);
-
-        // Store user data in session
-        $userData = [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'role_id' => $user->role_id,
-        ];
-
-        // Store role data in session
-        $roleData = $user->role ? [
-            'id' => $user->role->id,
-            'nama_role' => $user->role->nama_role,
-            'keterangan' => $user->role->keterangan,
-        ] : null;
-
-        $request->session()->put('user', $userData);
-        $request->session()->put('user_role', $roleData);
-        $request->session()->regenerate();
-
-        return redirect()->route('dashboard.index')
-            ->with('success', 'Login berhasil! Selamat datang ' . $user->name);
+    if (!$user || !Hash::check($validated['password'], $user->password)) {
+        return redirect()->route('login')
+            ->with('error', 'Email atau password salah!');
     }
+
+    // Authenticate user
+    Auth::login($user);
+
+    // Store user data in session
+    $userData = [
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'role_id' => $user->role_id,
+        // TAMBAHAN PENTING: Cek jika dia punya profil pelanggan, simpan kodenya.
+        'kode_pelanggan' => $user->pelanggan ? $user->pelanggan->kode_pelanggan : null,
+    ];
+
+    // Store role data in session
+    $roleData = $user->role ? [
+        'id' => $user->role->id,
+        'nama_role' => $user->role->nama_role,
+        'keterangan' => $user->role->keterangan,
+    ] : null;
+
+    $request->session()->put('user', $userData);
+    $request->session()->put('user_role', $roleData);
+    $request->session()->regenerate();
+
+    return redirect()->route('dashboard.index')
+        ->with('success', 'Login berhasil! Selamat datang ' . $user->name);
+}
 
     /**
      * Handle logout functionality

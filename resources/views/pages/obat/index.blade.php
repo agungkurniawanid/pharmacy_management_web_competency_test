@@ -1,3 +1,11 @@
+@php
+    // Ambil nama_role dari session, berikan string kosong jika tidak ada (untuk keamanan)
+    $namaRole = session('user_role.nama_role', '');
+    // Cek apakah string namaRole mengandung kata 'Apoteker'
+    $hasApotekerAccess = str_contains($namaRole, 'Apoteker');
+    $hasAdminAccess = str_contains($namaRole, 'Admin');
+@endphp
+
 @extends('layouts.main-layout')
 
 @section('content')
@@ -295,6 +303,7 @@
                                                 </svg>
                                             </a>
 
+                                            @if($hasAdminAccess)
                                             <button type="button"
                                                 @click="$dispatch('open-edit', {
         obat: {
@@ -317,26 +326,49 @@
                                                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
                                             </button>
+                                            @else
+                                            <button type="button" disabled
+                                                    class="p-1.5 cursor-not-allowed text-slate-600 bg-slate-800/50 rounded opacity-70"
+                                                    title="Anda tidak memiliki akses untuk menghapus">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none"
+                                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                </button>
+                                            @endif
 
-                                            <button type="button"
-                                                @click="window.dispatchEvent(new CustomEvent('open-confirm', {
-                                       detail: {
-                                           title: 'Hapus Data Obat',
-                                           message: 'Apakah Anda yakin ingin menghapus obat {{ $obat->nama_obat }}? Data yang dihapus tidak dapat dikembalikan.',
-                                           actionUrl: '{{ route('dashboard.obat.destroy', $obat->kode_obat) }}',
-                                           method: 'DELETE',
-                                           btnText: 'Hapus',
-                                           btnColor: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                                       }
-                                   }))"
-                                                class="p-1.5 cursor-pointer text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
-                                                title="Hapus">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
+                                            @if ($hasAdminAccess)
+                                                <button type="button"
+                                                    @click="window.dispatchEvent(new CustomEvent('open-confirm', {
+            detail: {
+                title: 'Hapus Data Obat',
+                message: 'Apakah Anda yakin ingin menghapus obat {{ $obat->nama_obat }}? Data yang dihapus tidak dapat dikembalikan.',
+                actionUrl: '{{ route('dashboard.obat.destroy', $obat->kode_obat) }}',
+                method: 'DELETE',
+                btnText: 'Hapus',
+                btnColor: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+            }
+        }))"
+                                                    class="p-1.5 cursor-pointer text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
+                                                    title="Hapus">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none"
+                                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            @else
+                                                <button type="button" disabled
+                                                    class="p-1.5 cursor-not-allowed text-slate-600 bg-slate-800/50 rounded opacity-70"
+                                                    title="Anda tidak memiliki akses untuk menghapus">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none"
+                                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

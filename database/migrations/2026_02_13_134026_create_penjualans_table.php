@@ -15,6 +15,8 @@ return new class extends Migration {
             $table->dateTime('tanggal_nota')->nullable(false);
             $table->string('kode_pelanggan', 20)->nullable(false);
             $table->decimal('diskon', 5, 2)->nullable(false);
+            $table->integer('total_harga')->nullable(false);
+            $table->integer('grand_total')->nullable(false);
             $table->timestamps();
 
             $table->foreign('kode_pelanggan')

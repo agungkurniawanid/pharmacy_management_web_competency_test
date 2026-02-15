@@ -24,9 +24,7 @@ class RoleFactory extends Factory
             ['Apoteker', 'Apoteker utama'],
             ['Apoteker Senior', 'Apoteker berpengalaman'],
             ['Apoteker Junior', 'Apoteker pendamping'],
-            ['Owner', 'Pemilik apotek'],
-            ['Owner Cabang', 'Pemilik cabang apotek'],
-            ['Owner Operasional', 'Mengawasi operasional apotek'],
+            ['Pelanggan', 'Pengguna layanan apotek'],
         ];
 
         static $index = 0;

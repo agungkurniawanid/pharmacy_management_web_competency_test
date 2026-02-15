@@ -69,7 +69,6 @@ class PembelianController extends Controller
     {
         // 1. Validasi Data Induk & Array Detail
         $request->validate([
-            'nota'                  => 'required|string|max:20|unique:pembelians,nota',
             'tanggal_nota'          => 'required|date',
             'kode_supplier'         => 'required|string|exists:suppliers,kode_supplier',
             'diskon'                => 'nullable|numeric|min:0|max:100',
@@ -77,16 +76,32 @@ class PembelianController extends Controller
             'details.*.kode_obat'   => 'required|string|exists:obats,kode_obat',
             'details.*.jumlah'      => 'required|integer|min:1',
         ], [
-            'nota.unique' => 'Nomor Nota sudah terdaftar.',
             'details.required' => 'Anda harus menambahkan minimal 1 obat ke dalam nota.'
         ]);
 
         // 2. Eksekusi Menggunakan Database Transaction
         DB::transaction(function () use ($request) {
-            // A. Simpan Data Master (Nota)
-            $pembelian = Pembelian::create($request->only(['nota', 'tanggal_nota', 'kode_supplier', 'diskon']));
+            // A. Generate Nomor Nota Otomatis
+            $lastPembelian = Pembelian::orderBy('nota', 'desc')->first();
+            $nextNumber = 1;
+            
+            if ($lastPembelian) {
+                // Ekstrak nomor dari nota terakhir (format: PEM-0000000000000001)
+                $lastNumber = (int) substr($lastPembelian->nota, 4); // Skip 'PEM-'
+                $nextNumber = $lastNumber + 1;
+            }
+            
+            $generatedNota = 'PEM-' . str_pad($nextNumber, 16, '0', STR_PAD_LEFT);
+            
+            // B. Simpan Data Master (Nota)
+            $pembelian = Pembelian::create([
+                'nota'          => $generatedNota,
+                'tanggal_nota'  => $request->tanggal_nota,
+                'kode_supplier' => $request->kode_supplier,
+                'diskon'        => $request->diskon
+            ]);
 
-            // B. Simpan Array Detail & TAMBAH STOK OBAT
+            // C. Simpan Array Detail & TAMBAH STOK OBAT
             foreach ($request->details as $detail) {
                 PembelianDetail::create([
                     'nota'      => $pembelian->nota,

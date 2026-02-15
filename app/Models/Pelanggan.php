@@ -19,4 +19,14 @@ class Pelanggan extends Model
         'alamat',
         'telpon',
     ];
+
+    public function penjualans()
+    {
+        return $this->hasMany(Penjualan::class, 'kode_pelanggan', 'kode_pelanggan');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
 }

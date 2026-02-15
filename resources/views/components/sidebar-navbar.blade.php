@@ -196,11 +196,11 @@
                         </div>
                         <div class="whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out"
                             :class="sidebarExpanded ? 'max-w-[200px] opacity-100' : 'max-w-0 opacity-0'">
-                            <span class="text-sm font-medium pr-4">User Management & Access</span>
+                            <span class="text-sm font-medium pr-4">User Management</span>
                         </div>
                         <span x-show="!sidebarExpanded"
                             class="invisible absolute start-full top-1/2 ms-4 -translate-y-1/2 rounded-sm bg-slate-900 border border-slate-700 px-2 py-1.5 text-xs font-medium text-white group-hover:visible shadow-lg z-50 whitespace-nowrap">
-                            User Management & Access
+                            User Management
                         </span>
                     </a>
                 </li>

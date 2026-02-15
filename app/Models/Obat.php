@@ -29,12 +29,21 @@ class Obat extends Model
     }
 
     public function pembelianDetails()
-{
-    return $this->hasMany(
-        PembelianDetail::class,
-        'kode_obat',
-        'kode_obat'
-    );
-}
+    {
+        return $this->hasMany(
+            PembelianDetail::class,
+            'kode_obat',
+            'kode_obat'
+        );
+    }
+
+    public function penjualanDetails()
+    {
+        return $this->hasMany(
+            PenjualanDetail::class,
+            'kode_obat',
+            'kode_obat'
+        );
+    }
 
 }

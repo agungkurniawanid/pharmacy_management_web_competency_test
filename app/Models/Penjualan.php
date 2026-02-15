@@ -18,5 +18,17 @@ class Penjualan extends Model
         'tanggal_nota',
         'kode_pelanggan',
         'diskon',
+        'total_harga',
+        'grand_total',
     ];
+
+    public function pelanggan()
+    {
+        return $this->belongsTo(Pelanggan::class, 'kode_pelanggan', 'kode_pelanggan');
+    }
+
+    public function penjualanDetails()
+    {
+        return $this->hasMany(PenjualanDetail::class, 'nota', 'nota');
+    }
 }

@@ -1,7 +1,7 @@
 @extends('layouts.main-layout')
 
 @section('content')
-{{-- Alpine Data memuat Arrays untuk Detail Obat Dinamis & Kalkulasi Real-time --}}
+{{-- Alpine Data memuat Arrays untuk Detail Obat Dinamis --}}
 <div x-data="{ 
         showAddSheet: {{ old('_method') !== 'PUT' && $errors->any() ? 'true' : 'false' }},
         addDetails: [{ kode_obat: '', jumlah: 1 }],
@@ -22,30 +22,9 @@
             tanggal_nota: '',
             pelanggan_name: '',
             diskon: 0,
-            total_harga: 0,
-            grand_total: 0,
             details: [],
             pelanggan_info: {}
-        },
-
-        {{-- Simpan daftar harga obat dari Backend ke Frontend untuk hitung Subtotal otomatis --}}
-        obatList: [
-            @foreach($obats as $obat)
-                { 
-                    id: '{{ $obat->kode_obat }}', 
-                    text: '{{ $obat->kode_obat }} - {{ addslashes($obat->nama_obat) }} (Stok: {{ $obat->stok }})',
-                    harga: {{ $obat->harga_jual ?? 0 }} 
-                },
-            @endforeach
-        ],
-        pelangganList: [
-            @foreach($pelanggans as $pelanggan)
-                { 
-                    id: '{{ $pelanggan->kode_pelanggan }}', 
-                    text: '{{ $pelanggan->kode_pelanggan }} - {{ addslashes($pelanggan->nama_pelanggan) }}' 
-                },
-            @endforeach
-        ]
+        }
     }" 
     @open-edit.window="
         const item = $event.detail.penjualan;
@@ -63,8 +42,6 @@
         detailData.tanggal_nota = item.tanggal_nota;
         detailData.pelanggan_name = item.pelanggan_name;
         detailData.diskon = item.diskon;
-        detailData.total_harga = item.total_harga;
-        detailData.grand_total = item.grand_total;
         detailData.details = item.details;
         detailData.pelanggan_info = item.pelanggan_info;
         showDetailSheet = true;
@@ -167,9 +144,8 @@
                         <th class="px-5 py-4 font-semibold">No. Nota</th>
                         <th class="px-5 py-4 font-semibold">Tanggal Nota</th>
                         <th class="px-5 py-4 font-semibold">Pelanggan</th>
-                        <th class="px-5 py-4 font-semibold">Total Item</th>
+                        <th class="px-5 py-4 font-semibold">Total Item (Obat)</th>
                         <th class="px-5 py-4 font-semibold">Diskon</th>
-                        <th class="px-5 py-4 font-semibold">Grand Total</th>
                         <th class="px-5 py-4 font-semibold text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -200,26 +176,15 @@
                             @endif
                         </td>
                         <td class="px-5 py-4 whitespace-nowrap">
-                            <span class="text-sm font-bold text-amber-400">Rp {{ number_format($item->grand_total ?? 0, 0, ',', '.') }}</span>
-                        </td>
-                        <td class="px-5 py-4 whitespace-nowrap">
                             <div class="flex items-center justify-center gap-2">
                                 <button type="button" 
                                     data-detail="{{ json_encode([
                                         'nota' => $item->nota,
-                                        'tanggal_nota' => \Carbon\Carbon::parse($item->tanggal_nota)->format('d M Y, H:i'),
-                                        'pelanggan_name' => $item->pelanggan->nama_pelanggan ?? 'Unknown',
+                                        'tanggal_nota' => \Carbon\Carbon::parse($item->tanggal_nota)->format('d M Y'),
+                                        'pelanggan_name' => $item->pelanggan->nama_pelanggan,
                                         'diskon' => $item->diskon,
-                                        'total_harga' => $item->total_harga,
-                                        'grand_total' => $item->grand_total,
-                                        'details' => $item->penjualanDetails->map(fn($d) => [
-                                            'kode_obat' => $d->kode_obat, 
-                                            'nama_obat' => $d->obat->nama_obat ?? 'Unknown', 
-                                            'jumlah' => $d->jumlah,
-                                            'harga_jual' => $d->harga_jual ?? 0,
-                                            'subtotal' => $d->subtotal ?? 0
-                                        ]),
-                                        'pelanggan_info' => ['kode' => $item->pelanggan->kode_pelanggan ?? '', 'alamat' => $item->pelanggan->alamat ?? '', 'telpon' => $item->pelanggan->telpon ?? '']
+                                        'details' => $item->penjualanDetails->map(fn($d) => ['kode_obat' => $d->kode_obat, 'nama_obat' => $d->obat->nama_obat, 'jumlah' => $d->jumlah]),
+                                        'pelanggan_info' => ['kode' => $item->pelanggan->kode_pelanggan, 'alamat' => $item->pelanggan->alamat, 'telpon' => $item->pelanggan->telpon]
                                     ]) }}"
                                     @click="
                                         const data = JSON.parse($el.getAttribute('data-detail'));
@@ -229,9 +194,12 @@
                                     "
                                     class="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded transition-colors"
                                     title="Lihat Detail">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </button>
                                 <button type="button" 
@@ -271,7 +239,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-5 py-10 text-center text-slate-500">
+                        <td colspan="6" class="px-5 py-10 text-center text-slate-500">
                             Tidak ada data penjualan. Silakan buat nota baru.
                         </td>
                     </tr>
@@ -280,49 +248,67 @@
             </table>
         </div>
         
-        {{-- Pagination --}}
+        {{-- Pagination yang Konsisten dengan Desain Obat --}}
         @if ($penjualans->hasPages())
         <div class="px-5 py-4 border-t border-slate-700 bg-slate-800/50">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+
                 <div class="text-sm text-slate-400">
                     Menampilkan <span class="font-medium text-slate-200">{{ $penjualans->firstItem() }}</span>
                     - <span class="font-medium text-slate-200">{{ $penjualans->lastItem() }}</span>
                     dari <span class="font-medium text-slate-200">{{ $penjualans->total() }}</span>
                 </div>
+
                 <div class="flex items-center gap-1">
+                    {{-- Tombol Previous --}}
                     @if ($penjualans->onFirstPage())
                         <span class="p-2 text-slate-600 cursor-not-allowed">
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
                         </span>
                     @else
-                        <a href="{{ $penjualans->previousPageUrl() }}" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors">
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                        <a href="{{ $penjualans->previousPageUrl() }}"
+                            class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors">
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
                         </a>
                     @endif
 
+                    {{-- Angka Pagination dengan separator (...) --}}
                     @foreach ($penjualans->links()->elements as $element)
+                        {{-- Separator Tiga Titik --}}
                         @if (is_string($element))
                             <span class="px-2 text-slate-500">{{ $element }}</span>
                         @endif
 
+                        {{-- Deretan Angka --}}
                         @if (is_array($element))
                             @foreach ($element as $page => $url)
                                 @if ($page == $penjualans->currentPage())
                                     <span class="px-3 py-1 bg-blue-600 text-white rounded font-medium text-sm">{{ $page }}</span>
                                 @else
-                                    <a href="{{ $url }}" class="px-3 py-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-sm transition-colors">{{ $page }}</a>
+                                    <a href="{{ $url }}"
+                                        class="px-3 py-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded text-sm transition-colors">{{ $page }}</a>
                                 @endif
                             @endforeach
                         @endif
                     @endforeach
 
+                    {{-- Tombol Next --}}
                     @if ($penjualans->hasMorePages())
-                        <a href="{{ $penjualans->nextPageUrl() }}" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors">
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        <a href="{{ $penjualans->nextPageUrl() }}"
+                            class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors">
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
                         </a>
                     @else
                         <span class="p-2 text-slate-600 cursor-not-allowed">
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
                         </span>
                     @endif
                 </div>
@@ -331,7 +317,6 @@
         @endif
     </div>
 
-    {{-- Modal Tambah Penjualan --}}
     <div x-show="showAddSheet" style="display: none;"
          x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
          x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
@@ -353,16 +338,18 @@
 
         <div class="p-6 overflow-y-auto custom-scrollbar">
             @if($errors->any())
-                <div class="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">Cek kembali form Anda, ada data yang belum valid.</div>
+                <div class="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">Cek kembali form Anda, ada data yang belum valid (termasuk list obat).</div>
             @endif
             <form id="formTambahPenjualan" action="{{ route('dashboard.penjualan.store') }}" method="POST" class="space-y-6">
                 @csrf
                 
+                {{-- Info Auto-Generate Nota --}}
                 <div class="flex gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
                     <svg class="size-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-1a1 1 0 11-2 0 1 1 0 012 0zM8 9a1 1 0 100-2 1 1 0 000 2zm5-1a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd"></path></svg>
-                    <div><strong>Nomor Nota Otomatis:</strong> Nomor nota akan otomatis ter-generate. Sistem juga akan menghitung total harga secara otomatis di latar belakang.</div>
+                    <div><strong>Nomor Nota Otomatis:</strong> Nomor nota akan otomatis ter-generate dengan format PEN-XXXXXXXXXXXXXXXX. Tidak perlu di-input manual!</div>
                 </div>
                 
+                {{-- Data Header Nota --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/30 p-4 rounded-xl border border-slate-700">
                     <div class="md:col-span-2 text-sm font-semibold text-blue-400 border-b border-slate-700 pb-2">INFORMASI NOTA</div>
                     <div>
@@ -370,41 +357,14 @@
                         <input type="datetime-local" name="tanggal_nota" value="{{ old('tanggal_nota', \Carbon\Carbon::now()->format('Y-m-d\TH:i')) }}" required
                             class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                     </div>
-                    {{-- Dropdown Pelanggan Custom --}}
-                    <div x-data="{ open: false, search: '' }" @click.outside="open = false" class="relative">
+                    <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">Pelanggan <span class="text-red-400">*</span></label>
-                        
-                        {{-- Select disembunyikan pakai 'sr-only' agar validasi form (required) tetap jalan --}}
-                        <select name="kode_pelanggan" required class="sr-only"
-                            x-model="{{ old('_method') === 'PUT' ? 'editData.kode_pelanggan' : 'detailData.pelanggan' }}">
-                            <option value=""></option>
-                            <template x-for="p in pelangganList"><option :value="p.id" x-text="p.text"></option></template>
+                        <select name="kode_pelanggan" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                            <option value="" disabled {{ old('kode_pelanggan') ? '' : 'selected' }}>Pilih Pelanggan</option>
+                            @foreach($pelanggans as $pelanggan)
+                                <option value="{{ $pelanggan->kode_pelanggan }}" {{ old('kode_pelanggan') == $pelanggan->kode_pelanggan ? 'selected' : '' }}>{{ $pelanggan->kode_pelanggan }} - {{ $pelanggan->nama_pelanggan }}</option>
+                            @endforeach
                         </select>
-
-                        {{-- Tombol Pemicu Dropdown --}}
-                        <button type="button" @click="open = !open" 
-                            class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 text-left flex justify-between items-center focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            :class="open ? 'border-blue-500 ring-1 ring-blue-500' : ''">
-                            {{-- Gunakan logika yang sesuai jika berada di form Edit --}}
-                            <span class="truncate" x-text="editData.kode_pelanggan ? pelangganList.find(p => p.id === editData.kode_pelanggan)?.text : 'Pilih Pelanggan...'"></span>
-                            <svg class="size-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                        </button>
-
-                        {{-- Kotak Pencarian & List Pelanggan --}}
-                        <div x-show="open" x-transition class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden" style="display: none;">
-                            <div class="p-2 border-b border-slate-600 bg-slate-900/50">
-                                <input type="text" x-model="search" placeholder="Cari pelanggan..." class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-500" @click.stop>
-                            </div>
-                            <ul class="max-h-48 overflow-y-auto custom-scrollbar py-1">
-                                <template x-for="p in pelangganList.filter(i => i.text.toLowerCase().includes(search.toLowerCase()))" :key="p.id">
-                                    <li @click="editData.kode_pelanggan = p.id; open = false; search = ''" 
-                                        class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer text-sm text-slate-300 transition-colors"
-                                        :class="editData.kode_pelanggan === p.id ? 'bg-blue-500/20 text-blue-400' : ''"
-                                        x-text="p.text"></li>
-                                </template>
-                                <li x-show="pelangganList.filter(i => i.text.toLowerCase().includes(search.toLowerCase())).length === 0" class="px-4 py-2 text-sm text-slate-500 text-center">Tidak ditemukan</li>
-                            </ul>
-                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">Diskon Keseluruhan (%)</label>
@@ -414,8 +374,11 @@
                                 @input="
                                     let val = $el.value;
                                     let parts = val.split('.');
-                                    if (parts.length > 2) { $el.value = parts[0] + '.' + parts.slice(1).join(''); }
+                                    if (parts.length > 2) {
+                                        $el.value = parts[0] + '.' + parts.slice(1).join('');
+                                    }
                                     $el.value = $el.value.replace(/[^0-9.]/g, '');
+                                    
                                     if ($el.value.includes('.')) {
                                         let [intPart, decPart] = $el.value.split('.');
                                         intPart = intPart === '' ? '0' : String(parseInt(intPart) || 0);
@@ -424,10 +387,18 @@
                                     } else {
                                         $el.value = String(parseInt($el.value) || 0);
                                     }
+                                    
                                     let num = parseFloat($el.value) || 0;
-                                    if (num > 100) { $el.value = '100'; }
+                                    if (num > 100) {
+                                        $el.value = '100';
+                                    }
                                 "
                                 @blur="
+                                    let num = parseFloat($el.value) || 0;
+                                    num = Math.min(100, Math.max(0, num));
+                                    $el.value = num.toString();
+                                "
+                                @change="
                                     let num = parseFloat($el.value) || 0;
                                     num = Math.min(100, Math.max(0, num));
                                     $el.value = num.toString();
@@ -437,7 +408,7 @@
                     </div>
                 </div>
 
-                {{-- Data Dinamis Baris Obat dengan Kalkulator Real-time --}}
+                {{-- Data Dinamis Baris Obat --}}
                 <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
                     <div class="text-sm font-semibold text-blue-400 border-b border-slate-700 pb-2 mb-4 flex justify-between items-center">
                         <span>DAFTAR OBAT KELUAR</span>
@@ -446,49 +417,19 @@
                     
                     <div class="space-y-3">
                         <template x-for="(detail, index) in addDetails" :key="index">
-                            <div class="flex flex-col sm:flex-row items-start gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                                {{-- Dropdown Obat Custom Terintegrasi Kalkulator --}}
-                                <div class="flex-1 w-full relative" x-data="{ open: false, search: '' }" @click.outside="open = false">
-                                    <select :name="'details['+index+'][kode_obat]'" x-model="detail.kode_obat" required class="sr-only">
-                                        <option value=""></option>
-                                        <template x-for="o in obatList"><option :value="o.id" x-text="o.text"></option></template>
+                            <div class="flex items-start gap-3">
+                                <div class="flex-1">
+                                    <select :name="'details['+index+'][kode_obat]'" x-model="detail.kode_obat" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">
+                                        <option value="" disabled>Pilih Obat...</option>
+                                        @foreach($obats as $obat)
+                                            <option value="{{ $obat->kode_obat }}">{{ $obat->kode_obat }} - {{ $obat->nama_obat }} (Stok: {{ $obat->stok }})</option>
+                                        @endforeach
                                     </select>
-                                    
-                                    <button type="button" @click="open = !open" 
-                                        class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 text-left flex justify-between items-center focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-                                        :class="open ? 'border-blue-500 ring-1 ring-blue-500' : ''">
-                                        <span class="truncate" x-text="detail.kode_obat ? obatList.find(o => o.id === detail.kode_obat)?.text : 'Pilih Obat...'"></span>
-                                        <svg class="size-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                                    </button>
-
-                                    <div x-show="open" x-transition class="absolute z-[60] w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden" style="display: none;">
-                                        <div class="p-2 border-b border-slate-600 bg-slate-900/50">
-                                            <input type="text" x-model="search" placeholder="Ketik nama/kode obat..." class="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 placeholder-slate-500" @click.stop>
-                                        </div>
-                                        <ul class="max-h-48 overflow-y-auto custom-scrollbar py-1">
-                                            <template x-for="o in obatList.filter(i => i.text.toLowerCase().includes(search.toLowerCase()))" :key="o.id">
-                                                <li @click="detail.kode_obat = o.id; open = false; search = ''" 
-                                                    class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer text-sm text-slate-300 transition-colors truncate"
-                                                    :class="detail.kode_obat === o.id ? 'bg-blue-500/20 text-blue-400' : ''"
-                                                    x-text="o.text"></li>
-                                            </template>
-                                            <li x-show="obatList.filter(i => i.text.toLowerCase().includes(search.toLowerCase())).length === 0" class="px-4 py-2 text-sm text-slate-500 text-center">Tidak ditemukan</li>
-                                        </ul>
-                                    </div>
                                 </div>
-                                
-                                <div class="w-full sm:w-24 shrink-0">
+                                <div class="w-24 shrink-0">
                                     <input type="number" :name="'details['+index+'][jumlah]'" x-model="detail.jumlah" required min="1" placeholder="Qty" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">
                                 </div>
-                                
-                                {{-- Subtotal Otomatis (Update pakai obatList) --}}
-                                <div class="w-full sm:w-32 shrink-0 flex flex-col justify-center sm:text-right text-slate-300 text-sm py-2">
-                                    <span class="text-xs text-slate-500">Subtotal</span>
-                                    <span class="font-semibold" :class="detail.kode_obat ? 'text-emerald-400' : 'text-slate-500'" 
-                                        x-text="detail.kode_obat ? 'Rp ' + ((obatList.find(o => o.id === detail.kode_obat)?.harga || 0) * detail.jumlah).toLocaleString('id-ID') : 'Rp 0'"></span>
-                                </div>
-
-                                <div class="shrink-0 sm:w-10 text-right">
+                                <div class="shrink-0 w-10 text-right">
                                     <button type="button" @click="addDetails.splice(index, 1)" x-show="addDetails.length > 1" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors" title="Hapus Baris">
                                         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
@@ -509,13 +450,12 @@
             <button type="button" @click="showAddSheet = false" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">Batal</button>
             <button type="submit" form="formTambahPenjualan" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
                 <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                Simpan Transaksi
+                Simpan & Kurangi Stok
             </button>
         </div>
     </div>
 
 
-    {{-- Modal Edit Penjualan --}}
     <div x-show="showEditSheet" style="display: none;"
          x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
          x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
@@ -539,6 +479,7 @@
                 @method('PUT')
                 <input type="hidden" name="nota_edit" x-model="editData.nota">
 
+                {{-- Data Header Nota --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/30 p-4 rounded-xl border border-slate-700">
                     <div>
                         <label class="block text-sm font-medium text-slate-300 mb-2">No. Nota (Read Only)</label>
@@ -565,8 +506,11 @@
                                 @input="
                                     let val = $el.value;
                                     let parts = val.split('.');
-                                    if (parts.length > 2) { $el.value = parts[0] + '.' + parts.slice(1).join(''); }
+                                    if (parts.length > 2) {
+                                        $el.value = parts[0] + '.' + parts.slice(1).join('');
+                                    }
                                     $el.value = $el.value.replace(/[^0-9.]/g, '');
+                                    
                                     if ($el.value.includes('.')) {
                                         let [intPart, decPart] = $el.value.split('.');
                                         intPart = intPart === '' ? '0' : String(parseInt(intPart) || 0);
@@ -575,11 +519,20 @@
                                     } else {
                                         $el.value = String(parseInt($el.value) || 0);
                                     }
+                                    
                                     let num = parseFloat($el.value) || 0;
-                                    if (num > 100) { $el.value = '100'; }
+                                    if (num > 100) {
+                                        $el.value = '100';
+                                    }
                                     editData.diskon = parseFloat($el.value) || 0;
                                 "
                                 @blur="
+                                    let num = parseFloat($el.value) || 0;
+                                    num = Math.min(100, Math.max(0, num));
+                                    $el.value = num.toString();
+                                    editData.diskon = num;
+                                "
+                                @change="
                                     let num = parseFloat($el.value) || 0;
                                     num = Math.min(100, Math.max(0, num));
                                     $el.value = num.toString();
@@ -590,13 +543,13 @@
                     </div>
                 </div>
 
-                {{-- Data Dinamis Baris Obat dengan Kalkulator Real-time (Versi Edit) --}}
+                {{-- Data Dinamis Baris Obat --}}
                 <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
                     <div class="text-sm font-semibold text-amber-400 border-b border-slate-700 pb-2 mb-4">DAFTAR OBAT KELUAR (UBAH JIKA ADA REVISI)</div>
                     <div class="space-y-3">
                         <template x-for="(detail, index) in editData.details" :key="index">
-                            <div class="flex flex-col sm:flex-row items-start gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                                <div class="flex-1 w-full">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-1">
                                     <select :name="'details['+index+'][kode_obat]'" x-model="detail.kode_obat" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:border-amber-500 text-sm">
                                         <option value="" disabled>Pilih Obat...</option>
                                         @foreach($obats as $obat)
@@ -604,18 +557,11 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="w-full sm:w-24 shrink-0">
+                                <div class="w-24 shrink-0">
                                     <input type="number" :name="'details['+index+'][jumlah]'" x-model="detail.jumlah" required min="1" placeholder="Qty" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:border-amber-500 text-sm">
                                 </div>
-                                
-                                {{-- Subtotal Otomatis (Hanya Tampilan) --}}
-                                <div class="w-full sm:w-32 shrink-0 flex flex-col justify-center sm:text-right text-slate-300 text-sm py-2">
-                                    <span class="text-xs text-slate-500">Subtotal</span>
-                                    <span class="font-semibold text-amber-400" x-text="detail.kode_obat ? 'Rp ' + ((obatPrices[detail.kode_obat] || 0) * detail.jumlah).toLocaleString('id-ID') : 'Rp 0'"></span>
-                                </div>
-
-                                <div class="shrink-0 sm:w-10 text-right">
-                                    <button type="button" @click="editData.details.splice(index, 1)" x-show="editData.details.length > 1" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors">
+                                <div class="shrink-0 w-10 text-right">
+                                    <button type="button" @click="editData.details.splice(index, 1)" x-show="editData.details.length > 1" class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded">
                                         <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                     </button>
                                 </div>
@@ -632,12 +578,12 @@
         <div class="px-6 py-4 border-t border-slate-700 bg-slate-800 flex justify-end gap-3 shrink-0 rounded-b-3xl">
             <button type="button" @click="showEditSheet = false" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">Batal</button>
             <button type="submit" form="formEditPenjualan" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-lg font-bold transition-colors flex items-center gap-2">
-                <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> Update Transaksi
+                <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> Update & Koreksi Stok
             </button>
         </div>
     </div>
 
-    {{-- Detail Sheet (Struk Faktur Penjualan) --}}
+    {{-- Detail Sheet --}}
     <div x-show="showDetailSheet" style="display: none;"
          x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
          x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
@@ -650,7 +596,7 @@
         <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
             <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
                 <span class="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg"><svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></span>
-                Detail Penjualan (Faktur)
+                Detail Penjualan
             </h2>
             <button type="button" @click="showDetailSheet = false" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors">
                 <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -658,7 +604,7 @@
         </div>
 
         <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
-            {{-- Header Informasi Faktur --}}
+            {{-- Header Informasi --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-900/30 p-4 rounded-xl border border-slate-700">
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">No. Nota</label>
@@ -680,49 +626,40 @@
                 </div>
             </div>
 
-            {{-- Detail Rincian Obat & Harga (Struk) --}}
+            {{-- Detail Obat --}}
             <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                <h3 class="text-sm font-semibold text-blue-400 border-b border-slate-700 pb-2 mb-4">RINCIAN OBAT & HARGA</h3>
+                <h3 class="text-sm font-semibold text-blue-400 border-b border-slate-700 pb-2 mb-4">DAFTAR OBAT YANG TERJUAL</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-slate-700">
-                                <th class="text-left py-2 px-2 text-slate-400 font-semibold">Obat</th>
-                                <th class="text-right py-2 px-2 text-slate-400 font-semibold">Harga Item</th>
-                                <th class="text-center py-2 px-2 text-slate-400 font-semibold">Qty</th>
-                                <th class="text-right py-2 px-2 text-slate-400 font-semibold">Subtotal</th>
+                                <th class="text-left py-2 px-2 text-slate-400 font-semibold">Kode Obat</th>
+                                <th class="text-left py-2 px-2 text-slate-400 font-semibold">Nama Obat</th>
+                                <th class="text-right py-2 px-2 text-slate-400 font-semibold">Jumlah</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template x-for="detail in detailData.details" :key="detail.kode_obat">
                                 <tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
-                                    <td class="py-3 px-2">
-                                        <div class="font-mono text-blue-300 text-xs" x-text="detail.kode_obat"></div>
-                                        <div class="text-slate-200" x-text="detail.nama_obat"></div>
-                                    </td>
-                                    <td class="py-3 px-2 text-right text-slate-300" x-text="'Rp ' + parseInt(detail.harga_jual || 0).toLocaleString('id-ID')"></td>
-                                    <td class="py-3 px-2 text-center text-slate-200 font-medium" x-text="detail.jumlah"></td>
-                                    <td class="py-3 px-2 text-right text-amber-400 font-medium" x-text="'Rp ' + parseInt(detail.subtotal || 0).toLocaleString('id-ID')"></td>
+                                    <td class="py-3 px-2 font-mono text-blue-300" x-text="detail.kode_obat"></td>
+                                    <td class="py-3 px-2 text-slate-200" x-text="detail.nama_obat"></td>
+                                    <td class="py-3 px-2 text-right text-slate-200 font-medium" x-text="detail.jumlah"></td>
                                 </tr>
                             </template>
                         </tbody>
                     </table>
                 </div>
-                
-                {{-- Kalkulasi Akhir Struk --}}
-                <div class="mt-4 pt-4 border-t border-slate-700 space-y-2">
-                    <div class="flex justify-between text-slate-400 text-sm px-2">
-                        <span>Total Kotor:</span>
-                        <span class="font-medium" x-text="'Rp ' + parseInt(detailData.total_harga || 0).toLocaleString('id-ID')"></span>
-                    </div>
-                    <div class="flex justify-between text-emerald-400 text-sm px-2">
-                        <span>Diskon (<span x-text="detailData.diskon || 0"></span>%):</span>
-                        <span class="font-medium" x-text="'- Rp ' + (parseInt(detailData.total_harga || 0) * (parseFloat(detailData.diskon || 0) / 100)).toLocaleString('id-ID')"></span>
-                    </div>
-                    <div class="flex justify-between text-slate-100 text-lg font-bold border-t border-slate-700/50 pt-3 mt-2 px-2">
-                        <span>GRAND TOTAL:</span>
-                        <span class="text-amber-400" x-text="'Rp ' + parseInt(detailData.grand_total || 0).toLocaleString('id-ID')"></span>
-                    </div>
+                <div class="mt-4 pt-4 border-t border-slate-700 flex justify-between">
+                    <span class="text-slate-400">Total Jenis Obat:</span>
+                    <span class="font-bold text-blue-400" x-text="detailData.details.length"></span>
+                </div>
+            </div>
+
+            {{-- Informasi Diskon --}}
+            <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-300 font-medium">Diskon Total</span>
+                    <span class="text-lg font-bold text-emerald-400"><span x-text="detailData.diskon || '0'"></span>%</span>
                 </div>
             </div>
 
@@ -747,7 +684,7 @@
         </div>
 
         <div class="px-6 py-4 border-t border-slate-700 bg-slate-800 flex justify-end gap-3 shrink-0 rounded-b-3xl">
-            <button type="button" @click="showDetailSheet = false" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Tutup Faktur</button>
+            <button type="button" @click="showDetailSheet = false" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">Tutup</button>
         </div>
     </div>
 </div>

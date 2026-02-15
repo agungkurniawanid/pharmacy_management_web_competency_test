@@ -19,10 +19,11 @@ class PelangganFactory extends Factory
         static $counter = 1;
         return [
             'kode_pelanggan' => 'PEL-' . str_pad($counter++, 16, '0', STR_PAD_LEFT),
+            'user_id'        => null, 
             'nama_pelanggan' => fake()->name(),
-            'alamat' => fake()->address(),
-            'kota' => fake()->city(),
-            'telpon' => fake()->numerify('62#########'),
+            'alamat'         => fake()->address(),
+            'kota'           => fake()->city(),
+            'telpon'         => fake()->numerify('628#########'),
         ];
     }
 }
