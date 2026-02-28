@@ -15,8 +15,10 @@ class Pelanggan extends Model
 
     protected $fillable = [
         'kode_pelanggan',
+        'user_id',         // PENTING: Untuk relasi jika buat akun
         'nama_pelanggan',
         'alamat',
+        'kota',            // PENTING: Tambahkan ini agar bisa di-save!
         'telpon',
     ];
 

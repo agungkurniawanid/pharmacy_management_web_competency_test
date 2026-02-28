@@ -105,6 +105,14 @@
                     </svg>
                     Masuk
                 </button>
+
+                {{-- Link to Signup --}}
+                <p class="text-center text-slate-400 text-sm mt-4">
+                    Belum punya akun? 
+                    <a href="{{ route('signup') }}" class="text-blue-500 hover:text-blue-400 font-medium transition-colors">
+                        Daftar di sini
+                    </a>
+                </p>
             </form>
         </div>
 

@@ -20,6 +20,9 @@ return new class extends Migration
             $table->integer('harga_jual')->nullable(false);
             $table->integer('stok')->nullable(false);
             $table->string('kode_supplier', 20)->nullable(false);
+
+            $table->date('tgl_kadaluarsa')->nullable(); 
+            $table->enum('status', ['Aktif', 'Nonaktif', 'Ditarik'])->default('Aktif');
             $table->timestamps();
 
             $table->foreign('kode_supplier')

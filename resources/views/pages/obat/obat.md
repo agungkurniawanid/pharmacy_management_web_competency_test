@@ -1,6 +1,5 @@
 @php
     $namaRole = session('user_role.nama_role', '');
-    $isPelanggan = str_contains(strtolower($namaRole), 'pelanggan');
     $hasApotekerAccess = str_contains($namaRole, 'Apoteker');
     $hasAdminAccess = str_contains($namaRole, 'Admin');
 @endphp
@@ -12,7 +11,6 @@
         showAddSheet: {{ old('_method') !== 'PUT' && $errors->any() ? 'true' : 'false' }},
         showEditSheet: {{ old('_method') === 'PUT' && $errors->any() ? 'true' : 'false' }},
         showDetailSheet: false,
-        showBeliSheet: false,
         editFormAction: '{{ old('_method') === 'PUT' && old('kode_obat_edit') ? route('dashboard.obat.update', old('kode_obat_edit')) : '' }}',
         editData: {
             kode_obat: '{{ old('kode_obat_edit') }}',
@@ -26,58 +24,8 @@
             status: '{{ old('status', 'Aktif') }}',
             kode_supplier: '{{ old('kode_supplier') }}'
         },
-        detailData: {},
-        beliData: {
-            kode_obat: '',
-            nama_obat: '',
-            harga_jual: 0,
-            stok: 0,
-            jumlah: 1,
-            subtotal: 0
-        },
-        keranjang: [],
-        
-        calculateSubtotal() {
-            this.beliData.subtotal = this.beliData.harga_jual * this.beliData.jumlah;
-        },
-        
-        addToKeranjang() {
-            const existingIndex = this.keranjang.findIndex(item => item.kode_obat === this.beliData.kode_obat);
-            
-            if (existingIndex >= 0) {
-                this.keranjang[existingIndex].jumlah += this.beliData.jumlah;
-                this.keranjang[existingIndex].subtotal = this.keranjang[existingIndex].harga_jual * this.keranjang[existingIndex].jumlah;
-            } else {
-                this.keranjang.push({
-                    kode_obat: this.beliData.kode_obat,
-                    nama_obat: this.beliData.nama_obat,
-                    harga_jual: this.beliData.harga_jual,
-                    stok: this.beliData.stok,
-                    jumlah: this.beliData.jumlah,
-                    subtotal: this.beliData.subtotal
-                });
-            }
-            
-            this.showBeliSheet = false;
-            this.beliData = { kode_obat: '', nama_obat: '', harga_jual: 0, stok: 0, jumlah: 1, subtotal: 0 };
-        },
-        
-        removeFromKeranjang(index) {
-            this.keranjang.splice(index, 1);
-        },
-        
-        getTotalBelanja() {
-            return this.keranjang.reduce((sum, item) => sum + item.subtotal, 0);
-        },
-        
-        getTotalItem() {
-            return this.keranjang.reduce((sum, item) => sum + item.jumlah, 0);
-        }
+        detailData: {} // Tempat menampung data untuk modal detail
     }"
-    @open-detail.window="
-        detailData = $event.detail.obat;
-        showDetailSheet = true;
-    "
     @open-edit.window="
         editData = $event.detail.obat;
         editFormAction = $event.detail.actionUrl;
@@ -89,63 +37,29 @@
             if(hj) hj.value = formatCurrencyInput(String(editData.harga_jual));
         }, 50);
     "
-    @open-beli.window="
-        beliData = $event.detail.obat;
-        beliData.jumlah = 1;
-        calculateSubtotal();
-        showBeliSheet = true;
+    @open-detail.window="
+        detailData = $event.detail.obat;
+        showDetailSheet = true;
     "
     class="flex flex-col gap-6 pb-12 relative">
 
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-slate-100 mb-2">
-                @if($isPelanggan)
-                    Katalog Obat
-                @else
-                    Data Obat
-                @endif
-            </h1>
+            <h1 class="text-3xl font-bold text-slate-100 mb-2">Data Obat</h1>
             <p class="text-slate-400 text-sm flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
-                @if($isPelanggan)
-                    Lihat dan beli obat yang tersedia
-                @else
-                    Manajemen inventory dan data produk obat
-                @endif
+                Manajemen inventory dan data produk obat
             </p>
         </div>
 
-        @if($isPelanggan)
-            {{-- Keranjang Belanja untuk Pelanggan --}}
-            <div class="relative">
-                <button type="button" 
-                    @click="if(keranjang.length > 0) { $refs.checkoutForm.scrollIntoView({ behavior: 'smooth' }); }"
-                    :class="keranjang.length > 0 ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-700 cursor-not-allowed'"
-                    :disabled="keranjang.length === 0"
-                    class="inline-flex cursor-pointer text-[14px] items-center gap-2 px-5 py-2.5 text-white rounded-lg font-medium transition-colors shadow-lg">
-                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Keranjang (<span x-text="getTotalItem()">0</span>)
-                </button>
-                <span x-show="keranjang.length > 0" class="absolute -top-2 -right-2 flex h-5 w-5">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-5 w-5 bg-emerald-500 items-center justify-center text-xs font-bold text-white" x-text="keranjang.length"></span>
-                </span>
-            </div>
-        @else
-            <button type="button" @click="showAddSheet = true" class="inline-flex cursor-pointer text-[14px] items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200 shadow-lg shadow-blue-500/20">
-                <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                Tambah Obat Baru
-            </button>
-        @endif
+        <button type="button" @click="showAddSheet = true" class="inline-flex cursor-pointer text-[14px] items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200 shadow-lg shadow-blue-500/20">
+            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Tambah Obat Baru
+        </button>
     </div>
 
-    {{-- Stats Cards - Hanya untuk Non-Pelanggan --}}
-    @if(!$isPelanggan)
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {{-- Card 1: Total Obat --}}
         <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm">
@@ -207,7 +121,6 @@
             </div>
         </div>
     </div>
-    @endif
 
     {{-- Filter & Tabel --}}
     <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden">
@@ -221,14 +134,13 @@
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-3">
-                    @if(!$isPelanggan)
+                    {{-- Filter Status Baru --}}
                     <select name="status" @change="$refs.filterForm.submit()" class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
                         <option value="">Semua Status</option>
                         <option value="Aktif" {{ request('status') == 'Aktif' ? 'selected' : '' }}>Aktif Dijual</option>
                         <option value="Nonaktif" {{ request('status') == 'Nonaktif' ? 'selected' : '' }}>Nonaktif / Beku</option>
-                        <option value="Ditarik" {{ request('status') == 'Ditarik' ? 'selected' : '' }}>Ditarik Pabrik</option>
+                        <option value="Ditarik" {{ request('status') == 'Ditarik' ? 'selected' : '' }}>Out Produksi</option>
                     </select>
-                    @endif
 
                     <select name="jenis" @change="$refs.filterForm.submit()" class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer">
                         <option value="">Semua Jenis</option>
@@ -241,9 +153,7 @@
                         <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Terbaru</option>
                         <option value="name_asc" {{ request('sort') == 'name_asc' ? 'selected' : '' }}>Nama A-Z</option>
                         <option value="stock_low" {{ request('sort') == 'stock_low' ? 'selected' : '' }}>Stok Terendah</option>
-                        @if(!$isPelanggan)
                         <option value="exp_near" {{ request('sort') == 'exp_near' ? 'selected' : '' }}>Segera Expired</option>
-                        @endif
                     </select>
 
                     @if (request('search') || request('jenis') || request('supplier') || request('sort') || request('status') || request('filter_exp') || request('status_stok'))
@@ -260,19 +170,14 @@
                     <tr class="bg-slate-900/50 border-b border-slate-700 text-slate-400 text-xs uppercase tracking-wider">
                         <th class="px-5 py-4 font-semibold">Kode Obat</th>
                         <th class="px-5 py-4 font-semibold">Nama & Kategori</th>
-                        <th class="px-5 py-4 font-semibold text-right">Harga {{ $isPelanggan ? '' : 'Jual' }}</th>
+                        <th class="px-5 py-4 font-semibold text-right">Harga Jual</th>
                         <th class="px-5 py-4 font-semibold text-center">Stok</th>
-                        @if(!$isPelanggan)
                         <th class="px-5 py-4 font-semibold">Expired & Status</th>
-                        @endif
                         <th class="px-5 py-4 font-semibold text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-700/50">
                     @forelse($obats as $obat)
-                        @if($isPelanggan && $obat->status != 'Aktif')
-                            @continue
-                        @endif
                         <tr class="hover:bg-slate-700/20 transition-colors">
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <span class="text-sm font-mono text-blue-400">{{ $obat->kode_obat }}</span>
@@ -295,9 +200,9 @@
                                     {{ $obat->stok }}
                                 </div>
                             </td>
-                            @if(!$isPelanggan)
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <div class="flex flex-col gap-1.5">
+                                    {{-- Hitung Status Expired Secara Visual --}}
                                     @php
                                         $expDate = \Carbon\Carbon::parse($obat->tgl_kadaluarsa);
                                         $now = \Carbon\Carbon::now();
@@ -316,16 +221,16 @@
                                         <span class="font-bold text-[10px]">{{ $expIcon }}</span>
                                     </span>
 
+                                    {{-- Status Barang --}}
                                     @if($obat->status == 'Aktif')
                                         <span class="w-max px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Aktif Dijual</span>
                                     @elseif($obat->status == 'Nonaktif')
                                         <span class="w-max px-2 py-0.5 rounded text-[10px] font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">Dibekukan</span>
                                     @else
-                                        <span class="w-max px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">Ditarik Pabrik</span>
+                                        <span class="w-max px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20">Out Produksi</span>
                                     @endif
                                 </div>
                             </td>
-                            @endif
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-2">
                                     {{-- Tombol Detail --}}
@@ -341,63 +246,40 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                     </button>
 
-                                    @if($isPelanggan)
-                                        {{-- Tombol Beli untuk Pelanggan --}}
+                                    @if($hasAdminAccess)
                                         <button type="button"
-                                            @click="$dispatch('open-beli', { 
+                                            @click="$dispatch('open-edit', {
                                                 obat: {
-                                                    kode_obat: '{{ $obat->kode_obat }}',
-                                                    nama_obat: '{{ addslashes($obat->nama_obat) }}',
-                                                    harga_jual: {{ $obat->harga_jual }},
-                                                    stok: {{ $obat->stok }},
-                                                    jumlah: 1,
-                                                    subtotal: 0
-                                                }
+                                                    kode_obat: '{{ $obat->kode_obat }}', nama_obat: '{{ addslashes($obat->nama_obat) }}', jenis: '{{ $obat->jenis }}',
+                                                    satuan: '{{ $obat->satuan }}', harga_beli: '{{ $obat->harga_beli }}', harga_jual: '{{ $obat->harga_jual }}',
+                                                    stok: '{{ $obat->stok }}', tgl_kadaluarsa: '{{ $obat->tgl_kadaluarsa ? \Carbon\Carbon::parse($obat->tgl_kadaluarsa)->format('Y-m-d') : '' }}',
+                                                    status: '{{ $obat->status }}', kode_supplier: '{{ $obat->kode_supplier }}'
+                                                },
+                                                actionUrl: '{{ route('dashboard.obat.update', $obat->kode_obat) }}'
                                             })"
-                                            :disabled="{{ $obat->stok <= 0 ? 'true' : 'false' }}"
-                                            :class="{{ $obat->stok <= 0 ? '\'cursor-not-allowed opacity-50\'' : '\'cursor-pointer\'' }}"
-                                            class="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-700 rounded transition-colors" 
-                                            title="{{ $obat->stok <= 0 ? 'Stok Habis' : 'Beli Obat' }}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                            </svg>
+                                            class="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-700 rounded transition-colors" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                         </button>
-                                    @else
-                                        @if($hasAdminAccess)
-                                            {{-- Tombol Edit --}}
-                                            <button type="button"
-                                                @click="$dispatch('open-edit', {
-                                                    obat: {
-                                                        kode_obat: '{{ $obat->kode_obat }}', nama_obat: '{{ addslashes($obat->nama_obat) }}', jenis: '{{ $obat->jenis }}',
-                                                        satuan: '{{ $obat->satuan }}', harga_beli: '{{ $obat->harga_beli }}', harga_jual: '{{ $obat->harga_jual }}',
-                                                        stok: '{{ $obat->stok }}', tgl_kadaluarsa: '{{ $obat->tgl_kadaluarsa ? \Carbon\Carbon::parse($obat->tgl_kadaluarsa)->format('Y-m-d') : '' }}',
-                                                        status: '{{ $obat->status }}', kode_supplier: '{{ $obat->kode_supplier }}'
-                                                    },
-                                                    actionUrl: '{{ route('dashboard.obat.update', $obat->kode_obat) }}'
-                                                })"
-                                                class="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-700 rounded transition-colors" title="Edit">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            </button>
+                                    @endif
 
-                                            {{-- Tombol Hapus --}}
-                                            <button type="button"
-                                                @click="window.dispatchEvent(new CustomEvent('open-confirm', {
-                                                    detail: {
-                                                        title: 'Hapus Data Obat', message: 'Apakah Anda yakin ingin menghapus obat {{ $obat->nama_obat }}? Data yang dihapus tidak dapat dikembalikan.',
-                                                        actionUrl: '{{ route('dashboard.obat.destroy', $obat->kode_obat) }}', method: 'DELETE', btnText: 'Hapus', btnColor: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                                                    }
-                                                }))"
-                                                class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors" title="Hapus">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
-                                        @endif
+                                    @if ($hasAdminAccess)
+                                        <button type="button"
+                                            @click="window.dispatchEvent(new CustomEvent('open-confirm', {
+                                                detail: {
+                                                    title: 'Hapus Data Obat', message: 'Apakah Anda yakin ingin menghapus obat {{ $obat->nama_obat }}? Data yang dihapus tidak dapat dikembalikan.',
+                                                    actionUrl: '{{ route('dashboard.obat.destroy', $obat->kode_obat) }}', method: 'DELETE', btnText: 'Hapus', btnColor: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                                                }
+                                            }))"
+                                            class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors" title="Hapus">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
                                     @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $isPelanggan ? 5 : 6 }}" class="px-5 py-10 text-center text-slate-500">
+                            <td colspan="6" class="px-5 py-10 text-center text-slate-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="size-12 mb-3 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                                     <p class="text-base font-medium text-slate-400">Tidak ada data obat ditemukan.</p>
@@ -409,7 +291,7 @@
             </table>
         </div>
         
-        {{-- Pagination --}}
+        {{-- Pagination Dinamis --}}
         @if ($obats->hasPages())
             <div class="px-5 py-4 border-t border-slate-700 bg-slate-800/50">
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -445,195 +327,7 @@
         @endif
     </div>
 
-    @if($isPelanggan)
-    {{-- Form Checkout Keranjang --}}
-    <div x-show="keranjang.length > 0" x-transition class="bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden" x-ref="checkoutForm">
-        <div class="p-5 border-b border-slate-700 bg-slate-800/50">
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <svg class="size-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Keranjang Belanja Anda
-            </h2>
-        </div>
-        
-        <div class="p-6 space-y-4">
-            {{-- Daftar Keranjang --}}
-            <template x-for="(item, index) in keranjang" :key="index">
-                <div class="flex items-center gap-4 p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
-                    <div class="flex-1">
-                        <h3 class="font-medium text-slate-100" x-text="item.nama_obat"></h3>
-                        <p class="text-sm text-slate-400 font-mono" x-text="item.kode_obat"></p>
-                        <p class="text-sm text-emerald-400 mt-1">Rp <span x-text="item.harga_jual.toLocaleString('id-ID')"></span> x <span x-text="item.jumlah"></span></p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-lg font-bold text-slate-100">Rp <span x-text="item.subtotal.toLocaleString('id-ID')"></span></p>
-                        <button type="button" @click="removeFromKeranjang(index)" class="mt-2 text-xs text-red-400 hover:text-red-300">Hapus</button>
-                    </div>
-                </div>
-            </template>
-
-            {{-- Total --}}
-            <div class="border-t border-slate-700 pt-4">
-                <div class="flex justify-between items-center text-lg font-bold">
-                    <span class="text-slate-300">Total Belanja:</span>
-                    <span class="text-emerald-400">Rp <span x-text="getTotalBelanja().toLocaleString('id-ID')"></span></span>
-                </div>
-            </div>
-
-            {{-- Form Submit --}}
-            <form action="{{ route('dashboard.penjualan.store') }}" method="POST" class="space-y-4">
-                @csrf
-                <input type="hidden" name="kode_pelanggan" value="{{ session('user.kode_pelanggan') }}">
-                <input type="hidden" name="diskon" value="0">
-                <input type="hidden" name="tanggal_nota" :value="new Date().toISOString().slice(0, 16)">
-                
-                <template x-for="(item, index) in keranjang" :key="index">
-                    <div>
-                        <input type="hidden" :name="'details['+index+'][kode_obat]'" :value="item.kode_obat">
-                        <input type="hidden" :name="'details['+index+'][jumlah]'" :value="item.jumlah">
-                        <input type="hidden" :name="'details['+index+'][harga_jual]'" :value="item.harga_jual">
-                    </div>
-                </template>
-
-                <button type="submit" class="w-full px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Checkout & Buat Pesanan
-                </button>
-            </form>
-        </div>
-    </div>
-    @endif
-
-    {{-- MODAL DETAIL OBAT --}}
-    <div x-show="showDetailSheet" style="display: none;"
-         x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-         class="fixed inset-x-0 bottom-0 z-[80] w-full max-w-2xl mx-auto flex flex-col max-h-[90vh] bg-slate-800 border-t border-x border-slate-700 rounded-t-3xl shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.7)]">
-        <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer" @click="showDetailSheet = false"><div class="w-16 h-1.5 bg-slate-600 rounded-full hover:bg-slate-500 transition-colors"></div></div>
-        
-        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <span class="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg"><svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
-                Informasi Detail Obat
-            </h2>
-            <button type="button" @click="showDetailSheet = false" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors"><svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
-        </div>
-        
-        <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
-            <div class="flex items-center gap-4 p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
-                <div class="size-16 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                    <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                </div>
-                <div>
-                    <h3 class="text-xl font-bold text-slate-100" x-text="detailData.nama_obat"></h3>
-                    <p class="text-sm font-mono text-blue-400 mt-1" x-text="detailData.kode_obat"></p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Stok & Satuan</span>
-                    <p class="text-lg font-medium text-slate-200 mt-1"><span x-text="detailData.stok"></span> <span class="text-sm text-slate-400" x-text="detailData.satuan"></span></p>
-                </div>
-                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Kategori Jenis</span>
-                    <p class="text-lg font-medium text-slate-200 mt-1" x-text="detailData.jenis"></p>
-                </div>
-                @if(!$isPelanggan)
-                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Harga Beli</span>
-                    <p class="text-lg font-medium text-slate-200 mt-1">Rp <span x-text="detailData.harga_beli"></span></p>
-                </div>
-                @endif
-                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Harga {{ $isPelanggan ? '' : 'Jual' }}</span>
-                    <p class="text-lg font-bold text-emerald-400 mt-1">Rp <span x-text="detailData.harga_jual"></span></p>
-                </div>
-                @if(!$isPelanggan)
-                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Tgl. Kadaluarsa</span>
-                    <p class="text-base font-medium text-slate-200 mt-1" :class="detailData.tgl_kadaluarsa.includes('Tidak') ? 'text-slate-500 italic' : ''" x-text="detailData.tgl_kadaluarsa"></p>
-                </div>
-                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Status</span>
-                    <p class="text-base font-medium mt-1" :class="detailData.status === 'Aktif' ? 'text-emerald-400' : (detailData.status === 'Nonaktif' ? 'text-slate-400' : 'text-red-400')" x-text="detailData.status"></p>
-                </div>
-                <div class="col-span-2 bg-slate-900/30 p-4 rounded-xl border border-slate-700">
-                    <span class="text-xs text-slate-500 uppercase font-semibold">Informasi Supplier</span>
-                    <p class="text-base font-medium text-slate-200 mt-1"><span x-text="detailData.supplier_nama"></span> <span class="text-sm text-slate-500 font-mono ml-2" x-text="'(' + detailData.supplier_kode + ')'"></span></p>
-                </div>
-                @endif
-            </div>
-        </div>
-        <div class="px-6 py-4 border-t border-slate-700 bg-slate-800 flex justify-end shrink-0 rounded-b-3xl">
-            <button type="button" @click="showDetailSheet = false" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">Tutup</button>
-        </div>
-    </div>
-
-    {{-- MODAL BELI OBAT (Khusus Pelanggan) --}}
-    @if($isPelanggan)
-    <div x-show="showBeliSheet" style="display: none;"
-         x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-         class="fixed inset-x-0 bottom-0 z-[85] w-full max-w-md mx-auto flex flex-col max-h-[90vh] bg-slate-800 border-t border-x border-slate-700 rounded-t-3xl shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.7)]">
-        <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer" @click="showBeliSheet = false"><div class="w-16 h-1.5 bg-slate-600 rounded-full hover:bg-slate-500 transition-colors"></div></div>
-        
-        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <span class="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
-                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                </span>
-                Tambah ke Keranjang
-            </h2>
-            <button type="button" @click="showBeliSheet = false" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors"><svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
-        </div>
-        
-        <div class="p-6 space-y-4">
-            <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                <h3 class="font-medium text-slate-100" x-text="beliData.nama_obat"></h3>
-                <p class="text-sm text-slate-400 font-mono mt-1" x-text="beliData.kode_obat"></p>
-                <p class="text-lg font-bold text-emerald-400 mt-2">Rp <span x-text="beliData.harga_jual.toLocaleString('id-ID')"></span></p>
-                <p class="text-sm text-slate-400 mt-1">Stok tersedia: <span class="font-medium" x-text="beliData.stok"></span></p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-slate-300 mb-2">Jumlah Beli</label>
-                <input type="number" 
-                    x-model="beliData.jumlah" 
-                    @input="calculateSubtotal()"
-                    :max="beliData.stok"
-                    min="1"
-                    class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
-            </div>
-
-            <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-slate-300 font-medium">Subtotal:</span>
-                    <span class="text-xl font-bold text-emerald-400">Rp <span x-text="beliData.subtotal.toLocaleString('id-ID')"></span></span>
-                </div>
-            </div>
-
-            <button type="button" 
-                @click="addToKeranjang()"
-                :disabled="beliData.jumlah <= 0 || beliData.jumlah > beliData.stok"
-                :class="beliData.jumlah <= 0 || beliData.jumlah > beliData.stok ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'"
-                class="w-full px-5 py-3 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Tambahkan ke Keranjang
-            </button>
-        </div>
-    </div>
-    @endif
-
-    {{-- MODAL TAMBAH OBAT (Khusus Non-Pelanggan) --}}
-    @if(!$isPelanggan)
+    {{-- MODAL TAMBAH OBAT --}}
     <div x-show="showAddSheet" style="display: none;"
          x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
          x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
@@ -694,7 +388,7 @@
                             <select name="status" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer">
                                 <option value="Aktif" {{ old('status') == 'Aktif' ? 'selected' : '' }}>Aktif (Dijual)</option>
                                 <option value="Nonaktif" {{ old('status') == 'Nonaktif' ? 'selected' : '' }}>Nonaktif (Beku)</option>
-                                <option value="Ditarik" {{ old('status') == 'Ditarik' ? 'selected' : '' }}>Ditarik Pabrik</option>
+                                <option value="Ditarik" {{ old('status') == 'Ditarik' ? 'selected' : '' }}>Out Produksi</option>
                             </select>
                         </div>
                     </div>
@@ -707,7 +401,7 @@
         </div>
     </div>
 
-    {{-- MODAL EDIT OBAT (Khusus Non-Pelanggan) --}}
+    {{-- MODAL EDIT OBAT --}}
     <div x-show="showEditSheet" style="display: none;"
          x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
          x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
@@ -770,7 +464,7 @@
                             <select name="status" x-model="editData.status" required class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-500">
                                 <option value="Aktif">Aktif (Dijual)</option>
                                 <option value="Nonaktif">Nonaktif (Beku)</option>
-                                <option value="Ditarik">Ditarik Pabrik</option>
+                                <option value="Ditarik">Out Produksi</option>
                             </select>
                         </div>
                     </div>
@@ -782,7 +476,68 @@
             <button type="submit" form="formEditObat" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-lg font-bold transition-colors">Update Data</button>
         </div>
     </div>
-    @endif
+
+    {{-- MODAL DETAIL OBAT --}}
+    <div x-show="showDetailSheet" style="display: none;"
+         x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition ease-in duration-300 transform" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+         class="fixed inset-x-0 bottom-0 z-[80] w-full max-w-2xl mx-auto flex flex-col max-h-[90vh] bg-slate-800 border-t border-x border-slate-700 rounded-t-3xl shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.7)]">
+        <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer" @click="showDetailSheet = false"><div class="w-16 h-1.5 bg-slate-600 rounded-full hover:bg-slate-500 transition-colors"></div></div>
+        
+        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
+            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                <span class="p-1.5 bg-blue-500/20 text-blue-400 rounded-lg"><svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></span>
+                Informasi Detail Obat
+            </h2>
+            <button type="button" @click="showDetailSheet = false" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors"><svg class="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+            <div class="flex items-center gap-4 p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+                <div class="size-16 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                    <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-100" x-text="detailData.nama_obat"></h3>
+                    <p class="text-sm font-mono text-blue-400 mt-1" x-text="detailData.kode_obat"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Stok & Satuan</span>
+                    <p class="text-lg font-medium text-slate-200 mt-1"><span x-text="detailData.stok"></span> <span class="text-sm text-slate-400" x-text="detailData.satuan"></span></p>
+                </div>
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Kategori Jenis</span>
+                    <p class="text-lg font-medium text-slate-200 mt-1" x-text="detailData.jenis"></p>
+                </div>
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Harga Beli</span>
+                    <p class="text-lg font-medium text-slate-200 mt-1">Rp <span x-text="detailData.harga_beli"></span></p>
+                </div>
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Harga Jual</span>
+                    <p class="text-lg font-bold text-emerald-400 mt-1">Rp <span x-text="detailData.harga_jual"></span></p>
+                </div>
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Tgl. Kadaluarsa</span>
+                    <p class="text-base font-medium text-slate-200 mt-1" :class="detailData.tgl_kadaluarsa.includes('Tidak') ? 'text-slate-500 italic' : ''" x-text="detailData.tgl_kadaluarsa"></p>
+                </div>
+                <div class="bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Status</span>
+                    <p class="text-base font-medium mt-1" :class="detailData.status === 'Aktif' ? 'text-emerald-400' : (detailData.status === 'Nonaktif' ? 'text-slate-400' : 'text-red-400')" x-text="detailData.status"></p>
+                </div>
+                <div class="col-span-2 bg-slate-900/30 p-4 rounded-xl border border-slate-700">
+                    <span class="text-xs text-slate-500 uppercase font-semibold">Informasi Supplier</span>
+                    <p class="text-base font-medium text-slate-200 mt-1"><span x-text="detailData.supplier_nama"></span> <span class="text-sm text-slate-500 font-mono ml-2" x-text="'(' + detailData.supplier_kode + ')'"></span></p>
+                </div>
+            </div>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-700 bg-slate-800 flex justify-end shrink-0 rounded-b-3xl">
+            <button type="button" @click="showDetailSheet = false" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">Tutup</button>
+        </div>
+    </div>
 
     <script>
         function formatCurrencyInput(value) {

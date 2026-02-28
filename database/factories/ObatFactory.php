@@ -30,6 +30,8 @@ class ObatFactory extends Factory
             'harga_jual' => $hargaJual,
             'stok' => fake()->numberBetween(10, 100),
             'kode_supplier' => Supplier::inRandomOrder()->first()?->kode_supplier ?? 'SUP-0000000000000001',
+            'tgl_kadaluarsa' => fake()->dateTimeBetween('+1 month', '+2 years')->format('Y-m-d'),
+            'status' => fake()->randomElement(['Aktif', 'Nonaktif', 'Ditarik']),
         ];
     }
 }

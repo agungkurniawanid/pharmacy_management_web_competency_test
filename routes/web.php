@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect()->route('dashboard.index');
+        return redirect()->route('dashboard.obat.index');
     }
     return redirect()->route('login');
 });
@@ -23,6 +23,10 @@ Route::middleware([RedirectIfAuthenticated::class])->group(function () {
     Route::get('/login', [RoleController::class, 'loginView'])->name('login');
     Route::post('/login', [RoleController::class, 'loginFunction'])->name('login.post');
 });
+
+// Route Signup untuk Pelanggan
+    Route::get('/signup', [RoleController::class, 'signupView'])->name('signup');
+    Route::post('/signup', [RoleController::class, 'signupFunction'])->name('signup.post');
 
 Route::post("/logout", [RoleController::class, 'logout'])
     ->name('logout')
@@ -67,6 +71,7 @@ Route::prefix('dashboard')
                 Route::post('/', [PenjualanController::class, 'store'])->name('store');
                 Route::put('/{nota}', [PenjualanController::class, 'update'])->name('update');
                 Route::delete('/{nota}', [PenjualanController::class, 'destroy'])->name('destroy');
+                Route::get('/report', [PenjualanController::class, 'report'])->name('report');
             });
 
         Route::prefix('pelanggan')
@@ -97,5 +102,8 @@ Route::prefix('dashboard')
             ->group(function () {
                 Route::get('/', [RoleController::class, 'index'])
                     ->name('index');
+                Route::post('/', [RoleController::class, 'store'])->name('store');
+                Route::put('/{user}', [RoleController::class, 'update'])->name('update');
+                Route::delete('/{user}', [RoleController::class, 'destroy'])->name('destroy');
             });
     });
